@@ -1,0 +1,42 @@
+# Node / Express backend
+node_modules/
+npm-debug.log*
+.env
+.env.local
+
+# Emscripten / WASM build output
+*.o
+*.wasm
+*.js.mem
+build/
+dist/
+a.out.js
+a.out.wasm
+
+# C++ build artifacts
+*.obj
+*.exe
+*.out
+*.exe~
+
+# Uploaded / processed images (don't commit test images or user uploads)
+uploads/
+processed/
+*.bmp
+
+# Database
+*.sqlite
+*.sqlite3
+pgdata/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
