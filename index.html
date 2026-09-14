@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>PixLab</title>
+</head>
+<body>
+    <nav>
+        <div class="logo">
+            PixLab
+        </div>
+
+        <div class="nav-links">
+            <a href="#">Gallery</a>
+            <a href="#">About</a>
+            <a href="#">Login</a>
+        </div>
+    </nav>
+
+    <main>
+        <h1>Upload your image</h1>
+        <label for="fileInput">Upload Image:</label>
+        <input type="file"
+            id="fileInput"
+            accept="image/*">
+        <p>Supported formats: PNG, JPG, JPEG, BMP, WebP</p>
+
+        <label for="filterOptions">Choose filter: </label>
+        <select id="filterOptions">
+            <option value="grayscale">Grayscale</option>
+            <option value="sepia">Sepia</option>
+            <option value="blur">Blur</option>
+            <option value="reflection">Reflection</option>
+        </select>
+        <section class="filter-preview">
+            <h3 id="previewHeading">Filter Preview</h3>
+        <div class="preview-container">
+            <img id="filterExampleImg"
+                src="images/exampleImage.png"
+                alt="Original example image"
+                width="500">
+
+            <span>→</span>
+
+            <img id="filterExampleResultImg"
+                src="images/exampleImageGrayScale.png"
+                alt="Grayscale example image"
+                width="500">
+        </div>
+        </section>
+        <button id="applyFilterBtn">Apply Filter</button>
+        
+        <a id="downloadBtn" download>Download ⤓</a>
+    </main>
+</body>
+</html>
