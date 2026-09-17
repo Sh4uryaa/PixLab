@@ -1,58 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="images/favicon_io/favicon-32x32.png">
+    <link rel="stylesheet" href="style.css">
+
     <title>PixLab</title>
 </head>
+
 <body>
+
     <nav>
+
         <div class="logo">
+            <img id="website-logo" src="images/favicon_io/favicon-32x32.png" alt="Website Logo">
             PixLab
         </div>
 
         <div class="nav-links">
             <a href="#">Gallery</a>
+            <a href="index.html">Filters</a>
+            <a href="enhance.html">Enhance Image</a>
             <a href="#">About</a>
             <a href="#">Login</a>
         </div>
+
     </nav>
 
+
     <main>
+
         <h1>Upload your image</h1>
-        <label for="fileInput">Upload Image:</label>
-        <input type="file"
-            id="fileInput"
-            accept="image/*">
-        <p>Supported formats: PNG, JPG, JPEG, BMP, WebP</p>
 
-        <label for="filterOptions">Choose filter: </label>
-        <select id="filterOptions">
-            <option value="grayscale">Grayscale</option>
-            <option value="sepia">Sepia</option>
-            <option value="blur">Blur</option>
-            <option value="reflection">Reflection</option>
-        </select>
-        <section class="filter-preview">
-            <h3 id="previewHeading">Filter Preview</h3>
-        <div class="preview-container">
-            <img id="filterExampleImg"
-                src="images/exampleImage.png"
-                alt="Original example image"
-                width="500">
 
-            <span>→</span>
+        <div class="filter-workspace">
 
-            <img id="filterExampleResultImg"
-                src="images/exampleImageGrayScale.png"
-                alt="Grayscale example image"
-                width="500">
+
+            <!-- RIGHT SIDE: CONTROLS -->
+
+            <div class="filter-controls">
+
+                <label for="fileInput" class="upload-box">
+
+                    <span class="upload-button">
+                        ⬆ Browse files
+                    </span>
+
+                    <p>Drop or add an image</p>
+
+                    <p class="supported-formats">
+                        Supported formats: PNG, JPG, JPEG, BMP, WebP
+                    </p>
+
+                </label>
+
+                <input type="file"
+                    id="fileInput"
+                    accept="image/*">
+
+
+                <div class="filter-selection">
+
+                    <label for="filterOptions">
+                        Choose filter:
+                    </label>
+
+                    <select id="filterOptions">
+
+                        <option value="grayscale">
+                            Grayscale
+                        </option>
+
+                        <option value="sepia">
+                            Sepia
+                        </option>
+
+                        <option value="blur">
+                            Blur
+                        </option>
+
+                        <option value="reflection">
+                            Reflection
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <button id="applyFilterBtn">Apply Filter</button>
+            </div>
+
+
+            <!-- LEFT SIDE: PREVIEW -->
+
+            <div class="comparison-container">
+
+                <img id="filterExampleImg"
+                    src="images/exampleImage.png"
+                    alt="Original example image">
+
+                <img id="filterExampleResultImg"
+                    src="images/exampleImageGrayScale.png"
+                    alt="Filtered example image">
+
+
+                <div class="slider-line">
+
+                    <div class="slider-button">
+
+                        <img src="images/left-right.png"
+                            alt="Left and right arrow">
+
+                    </div>
+
+                </div>
+
+
+                <input type="range"
+                    id="comparisonSlider"
+                    min="0"
+                    max="100"
+                    value="50"
+                    aria-label="Compare original and filtered image">
+
+            </div>
+
+
         </div>
-        </section>
-        <button id="applyFilterBtn">Apply Filter</button>
-        
-        <a id="downloadBtn" download>Download ⤓</a>
+
+
+        <a id="downloadBtn" download>
+            Download ⤓
+        </a>
+
     </main>
+
+    <footer>
+    <div class="footer-content">
+        <div class="footer-logo">
+            <img src="images/favicon_io/favicon-32x32.png" alt="PixLab Logo">
+            <span>PixLab</span>
+        </div>
+
+        <div class="footer-links">
+            <a href="#">Gallery</a>
+            <a href="index.html">Filters</a>
+            <a href="enhance.html">Enhance Image</a>
+            <a href="#">About</a>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <p>© 2026 PixLab. All rights reserved.</p>
+    </div>
+</footer>
+
 </body>
+
 </html>
