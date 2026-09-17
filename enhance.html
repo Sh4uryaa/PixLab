@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="images/favicon_io/favicon-32x32.png">
+    <link rel="stylesheet" href="style.css">
+    <title>PixLab - Image Enhancer</title>
+</head>
+
+<body>
+
+    <nav>
+        <div class="logo">
+            <img id="website-logo" src="images/favicon_io/favicon-32x32.png" alt="Website Logo">
+            PixLab
+        </div>
+
+        <div class="nav-links">
+            <a href="#">Gallery</a>
+            <a href="index.html">Filters</a>
+            <a href="enhance.html">Enhance Image</a>
+            <a href="#">About</a>
+            <a href="#">Login</a>
+        </div>
+    </nav>
+
+    <main>
+
+        <h1>Enhance your image</h1>
+
+        <div class="enhancement-workspace">
+
+            <!-- Left: Preview -->
+            <div class="comparison-container">
+
+                <img id="beforeImage"
+                    src="images/enhancement-before.png"
+                    alt="Image before enhancement">
+
+                <img id="afterImage"
+                    src="images/enhancement-after.png"
+                    alt="Image after enhancement">
+
+                <div class="slider-line">
+                    <div class="slider-button">
+                        <img id="leftRightArrow"
+                            src="images/left-right.png"
+                            alt="Left and right arrow">
+                    </div>
+                </div>
+
+                <input type="range"
+                    id="comparisonSlider"
+                    min="0"
+                    max="100"
+                    value="50"
+                    aria-label="Compare original and enhanced image">
+
+            </div>
+
+
+            <!-- Right: Controls -->
+            <div class="enhancement-controls">
+
+                <label for="fileInput" class="upload-box">
+
+                    <span class="upload-button">
+                        ⬆ Browse files
+                    </span>
+
+                    <p>Drop or add an image</p>
+
+                    <p class="supported-formats">
+                        Supported formats: PNG, JPG, JPEG, BMP, WebP
+                    </p>
+
+                </label>
+
+                <input type="file"
+                    id="fileInput"
+                    accept="image/*">
+
+                <button id="applyEnhancementBtn">
+                    Enhance Image
+                </button>
+
+            </div>
+
+        </div>
+
+    </main>
+
+<footer>
+    <div class="footer-content">
+        <div class="footer-logo">
+            <img src="images/favicon_io/favicon-32x32.png" alt="PixLab Logo">
+            <span>PixLab</span>
+        </div>
+
+        <div class="footer-links">
+            <a href="#">Gallery</a>
+            <a href="index.html">Filters</a>
+            <a href="enhance.html">Enhance Image</a>
+            <a href="#">About</a>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <p>© 2026 PixLab. All rights reserved.</p>
+    </div>
+</footer>
+
+</body>
+</html>
