@@ -1,0 +1,28 @@
+{
+  "name": "pixlab",
+  "version": "1.0.0",
+  "description": "A web-based image processing and enhancement application",
+  "keywords": [
+    "image-processing",
+    "image-editor",
+    "web-application",
+    "filters",
+    "image-enhancement",
+    "pixlab"
+  ],
+  "homepage": "https://github.com/Sh4uryaa/PixLab#readme",
+  "bugs": {
+    "url": "https://github.com/Sh4uryaa/PixLab/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sh4uryaa/PixLab.git"
+  },
+  "license": "MIT",
+  "author": "Shaurya Mishra",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
