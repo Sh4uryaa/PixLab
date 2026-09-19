@@ -376,6 +376,57 @@ nav {
     background: #007429;
 }
 
+/*About*/
+
+.about-main {
+    align-items: center;
+    padding: 50px 40px;
+}
+
+.about-main > h1 {
+    margin-bottom: 60px;
+}
+
+.about-content {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+
+    align-items: center;
+
+    width: min(90vw, 1000px);
+
+    gap: 80px;
+}
+
+.about-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.about-logo img {
+    transform: translate(-60px, -30px);
+    width: 230px;
+    height: 230px;
+}
+
+.about-text h2 {
+    margin: 0 0 15px;
+    font-size: 28px;
+}
+
+.about-text p {
+    margin: 0 0 40px;
+
+    color: #ccc;
+    line-height: 1.7;
+    font-size: 16px;
+}
+
+.about-text h2:not(:first-child) {
+    margin-top: 10px;
+}
+
 /*Footer*/
 
 footer {
