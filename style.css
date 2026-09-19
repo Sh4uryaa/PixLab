@@ -27,7 +27,7 @@ body {
 }
 
 
-/* ==================== NAVBAR ==================== */
+/*Navbar*/
 
 nav {
     background: #111;
@@ -64,7 +64,7 @@ nav {
 }
 
 
-/* ==================== FILTER WORKSPACE ==================== */
+/*Filter*/
 
 .filter-workspace {
     display: grid;
@@ -102,7 +102,7 @@ nav {
 }
 
 
-/* ==================== UPLOAD BOX ==================== */
+/*Upload*/
 
 .upload-box {
     position: relative;
@@ -162,7 +162,7 @@ nav {
 }
 
 
-/* ==================== FILTER SELECTION ==================== */
+/*Filter Selection*/
 
 .filter-selection {
     display: flex;
@@ -194,7 +194,7 @@ nav {
 }
 
 
-/* ==================== COMPARISON SLIDER ==================== */
+/*Comparision Slider */
 
 .comparison-container > img {
     position: absolute;
@@ -290,7 +290,7 @@ nav {
 }
 
 
-/* ==================== DOWNLOAD ==================== */
+/*Download*/
 
 #downloadBtn {
     display: inline-block;
@@ -310,7 +310,7 @@ nav {
     background: #202021;
 }
 
-/* ==================== IMAGE ENHANCER ==================== */
+/*Image Enhancer*/
 
 .enhancement-workspace {
     display: grid;
@@ -349,8 +349,6 @@ nav {
 }
 
 
-/* ==================== ENHANCEMENT BUTTON ==================== */
-
 #applyEnhancementBtn {
     margin-top: 25px;
 
@@ -372,7 +370,7 @@ nav {
     background: #007429;
 }
 
-/* ==================== FOOTER ==================== */
+/*Footer*/
 
 footer {
     background: #111;
