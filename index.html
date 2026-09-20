@@ -146,7 +146,7 @@
 
     <div class="login-heading">
         <img src="images/favicon_io/favicon-32x32.png" alt="PixLab logo">
-        <h2>Sign in to PixLab</h2>
+        <h2 id="login-title">Sign in to PixLab</h2>
     </div>
         <form id="login-form">
             <label for="login-email">Email</label>
@@ -154,8 +154,8 @@
 
             <label for="login-password">Password</label>
             <input type="password" id="login-password" required>
-
-            <button type="submit">Login</button>
+            <p id="login-error"></p>
+            <button type="submit" id="login-submit">Login</button>
         </form>
 
         <p class="forgot-password">Forgot password?</p>
@@ -195,9 +195,12 @@
             </div>
         </button>
 
-        <p class="signup-text">
-            Don't have an account?
+        <p class="signup-text" id="signup-title">
+            <span id="signup-question">Don't have an account?</span>
             <span id="signup-link">Sign up</span>
+
+            <span id="login-question">Already have an account?</span>
+            <span id="login-link">Log in</span>
         </p>
 
     </div>
@@ -222,7 +225,7 @@
         <p>© 2026 PixLab. Licensed under the MIT License.</p>
     </div>
 </footer>
-<script type="module" src="firebase.js"></script>
+<script type="module" src="auth.js"></script>
 </body>
 
 </html>
