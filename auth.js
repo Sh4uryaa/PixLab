@@ -1,30 +1,17 @@
 import { auth } from "./firebase.js";
+
 import {
     signInWithEmailAndPassword,
-    createUserWithEmailAndPassword
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup
 } from "firebase/auth";
-
 let isSignupMode = false;
 
 const loginButton = document.getElementById("login-button");
 const loginModal = document.getElementById("login-modal");
 const closeLogin = document.getElementById("close-login");
 const galleryLogin = document.getElementById("gallery-login");
-
-loginButton.addEventListener("click", function () {
-    loginModal.style.display = "flex";
-});
-
-closeLogin.addEventListener("click", function () {
-    loginModal.style.display = "none";
-});
-
-if (galleryLogin) {
-    galleryLogin.addEventListener("click", function () {
-        loginModal.style.display = "flex";
-    });
-}
-
 const loginForm = document.getElementById("login-form");
 const loginError = document.getElementById("login-error");
 
@@ -40,6 +27,25 @@ const passwordInput = document.getElementById("login-password");
 const togglePassword = document.getElementById("toggle-password");
 const eyeClosed = document.getElementById("eye-closed");
 const eyeOpen = document.getElementById("eye-open");
+
+const googleLogin = document.getElementById("google-login");
+const googleProvider = new GoogleAuthProvider();
+
+loginButton.addEventListener("click", function () {
+    loginModal.style.display = "flex";
+});
+
+closeLogin.addEventListener("click", function () {
+    loginModal.style.display = "none";
+});
+
+if (galleryLogin) {
+    galleryLogin.addEventListener("click", function () {
+        loginModal.style.display = "flex";
+    });
+}
+
+
 eyeOpen.style.display = "block";
 eyeClosed.style.display = "none";
 
@@ -119,3 +125,16 @@ togglePassword.addEventListener("click", function () {
         togglePassword.setAttribute("aria-label", "Show password");
     }
 });     
+
+googleLogin.addEventListener("click", async function () {
+
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+
+        console.log("Google login successful:", result.user);
+
+    } catch (error) {
+        console.error("Google authentication failed:", error);
+    }
+
+});
