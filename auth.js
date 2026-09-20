@@ -40,6 +40,8 @@ const passwordInput = document.getElementById("login-password");
 const togglePassword = document.getElementById("toggle-password");
 const eyeClosed = document.getElementById("eye-closed");
 const eyeOpen = document.getElementById("eye-open");
+eyeOpen.style.display = "block";
+eyeClosed.style.display = "none";
 
 loginForm.addEventListener("submit", async function (event) {
     event.preventDefault();
