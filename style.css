@@ -627,6 +627,58 @@ nav {
     cursor: pointer;
 }
 
+.password-container {
+    position: relative;
+    width: 100%;
+}
+
+.password-container input {
+    width: 100%;
+    box-sizing: border-box;
+    padding-right: 45px;
+}
+
+#toggle-password {
+    all: unset;
+
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+
+    width: 24px;
+    height: 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #aaa;
+    cursor: pointer;
+    z-index: 10;
+}
+
+#toggle-password:hover {
+    color: #f5f5f5;
+}
+
+#toggle-password svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform: translateY(-8px);
+}
+
+#eye-closed {
+    display: none;
+}
+
+
 #login-error {
     text-align: center;
     color: rgb(219, 58, 58);

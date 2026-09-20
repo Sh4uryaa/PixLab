@@ -36,6 +36,11 @@ const signupLink = document.getElementById("signup-link");
 const loginTitle = document.getElementById("login-title");
 const loginSubmit = document.getElementById("login-submit");
 
+const passwordInput = document.getElementById("login-password");
+const togglePassword = document.getElementById("toggle-password");
+const eyeClosed = document.getElementById("eye-closed");
+const eyeOpen = document.getElementById("eye-open");
+
 loginForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
@@ -92,3 +97,23 @@ loginLink.addEventListener("click", function () {
     signupQuestion.style.display = "inline";
     signupLink.style.display = "inline";
 });
+
+togglePassword.addEventListener("click", function () {
+
+    if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+
+        eyeOpen.style.display = "none";
+        eyeClosed.style.display = "block";
+
+        togglePassword.setAttribute("aria-label", "Hide password");
+
+    } else {
+        passwordInput.type = "password";
+
+        eyeOpen.style.display = "block";
+        eyeClosed.style.display = "none";
+
+        togglePassword.setAttribute("aria-label", "Show password");
+    }
+});     
