@@ -813,3 +813,61 @@ footer {
     color: #777;
     font-size: 12px;
 }
+
+.account-container {
+    position: relative;
+}
+
+.account-button {
+    display: none;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.account-button .user-icon {
+    display: block;
+}
+
+.account-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 200px;
+    padding: 14px;
+    background: #202021;
+    border: 1px solid #555;
+    border-radius: 8px;
+    z-index: 1001;
+}
+
+.account-menu p {
+    margin: 0 0 12px;
+    overflow-wrap: anywhere;
+    color: #f5f5f5;
+    font-size: 13px;
+}
+
+.account-menu button {
+    width: 100%;
+    padding: 9px;
+    border: none;
+    border-radius: 5px;
+    background: #fe7f00;
+    color: white;
+    cursor: pointer;
+}
+
+.account-container {
+    visibility: hidden;
+}
+
+.account-container.auth-ready {
+    visibility: visible;
+}
+
+.gallery-login-message {
+    display: none;
+}
