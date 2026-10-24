@@ -1,31 +1,34 @@
 # PixLab
 
-PixLab is an image filtering application built around a C++ OOP core, an abstract `Filter` interface with concrete implementations for grayscale, sepia, box blur, reflection, and image enhancement, compiled to WebAssembly and run directly in the browser. No server round-trip for processing: images are read, filtered, and re-encoded entirely client-side using Emscripten's memory bridge between JS and C++. A Node.js/Express backend with PostgreSQL adds optional accounts, letting users save processed images to a personal gallery and revisit their history.
+**A web-based image editor powered by C++ and WebAssembly.**
+
+PixLab is an image processing application that lets users upload images, apply creative filters, compare before-and-after results, and enhance their images through a simple web interface.
+
+The project combines a modern frontend with an object-oriented C++ image-processing engine, with the goal of running image transformations directly in the browser using WebAssembly.
 
 ## Features
 
-- Grayscale, sepia, box blur, and reflection filters
-- Image enhancement via unsharp masking
-- Filtering runs entirely client-side using WebAssembly, no server needed for processing
-- Optional accounts to save processed images and view history
+- **Grayscale** — Convert images to grayscale.
+- **Sepia** — Give images a classic vintage look.
+- **Blur** — Apply a blur effect.
+- **Reflection** — Flip images horizontally.
+- **Image Enhancement** — Improve image quality using a dedicated enhancement algorithm.
+- **Before & After Comparison** — Compare original and processed images using an interactive slider.
+- **Image Upload & Download** — Work with your own images.
+- **User Authentication** — Sign in using email/password or Google.
+- **Gallery** — Browse images through a dedicated gallery interface.
 
 ## Tech Stack
 
-**Core Engine:** C++ (OOP: encapsulation, abstraction, inheritance, polymorphism)
-**Compilation:** Emscripten (C++ to WebAssembly)
-**Frontend:** HTML, CSS, JavaScript
-**Backend:** Node.js, Express
-**Database:** PostgreSQL
+| Technology | Purpose |
+|---|---|
+| C++17 | Image-processing engine |
+| WebAssembly (WASM) | Run compiled C++ code in the browser |
+| Emscripten | Compile C++ into WebAssembly |
+| HTML, CSS, JavaScript | Frontend and interactive UI |
+| Vite | Frontend development server |
+| Firebase Authentication | User sign-in and authentication |
 
-## Getting Started
+## 📄 License
 
-```bash
-git clone https://github.com/your-username/pixlab.git
-cd pixlab/backend
-npm install
-npm start
-```
-
-## License
-
-This project is open source and available under the MIT License.
+Released under the MIT License.
