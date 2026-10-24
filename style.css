@@ -296,6 +296,7 @@ nav {
     opacity: 0;
 
     cursor: ew-resize;
+    touch-action: pan-y;
 }
 
 #applyFilterBtn {
