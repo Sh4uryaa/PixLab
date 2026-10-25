@@ -1,85 +1,90 @@
-#include "../src/Blur.h"
-#include "../src/Grayscale.h"
-#include "../src/Reflect.h"
-#include "../src/Sepia.h"
-#include "../src/Image.h"
+#include "Image.h"
+#include "BMPHandler.h"
+#include "FilterFactory.h"
+#include "GrayscaleFilter.h"
+#include "SepiaFilter.h"
+#include "BlurFilter.h"
+#include "ReflectFilter.h"
+#include "PixelateFilter.h"
+#include "VignetteFilter.h"
+#include "UnsharpMaskEnhancer.h"
 
 #include <cassert>
 #include <cmath>
 #include <iostream>
-#include <fstream>
-#include <cstdio>
-#include <algorithm>
-#include <stdexcept>
 #include <vector>
 
-// Tests use a tiny BMP written by Image::save so padding and round-trip are exercised.
-static Image makeImage(int width, int height) {
-    // Test fixture writer: build a BMP file header through a temporary BMP, then reload it.
-    const char* fixture = "pixlab_test_fixture.bmp";
-    std::ofstream out(fixture, std::ios::binary);
-    BITMAPFILEHEADER bf{};
-    BITMAPINFOHEADER bi{};
-    const int pad = (4 - (width * 3) % 4) % 4;
-    const std::uint32_t size = 54 + height * (width * 3 + pad);
-    bf.bfType = 0x4D42; bf.bfSize = size; bf.bfOffBits = 54;
-    bi.biSize = 40; bi.biWidth = width; bi.biHeight = height;
-    bi.biPlanes = 1; bi.biBitCount = 24; bi.biCompression = 0; bi.biSizeImage = size - 54;
-    out.write(reinterpret_cast<char*>(&bf), sizeof(bf));
-    out.write(reinterpret_cast<char*>(&bi), sizeof(bi));
-    const char padding[3] = {0,0,0};
-    for (int y=0; y<height; ++y) {
-        for (int x=0; x<width; ++x) {
-            RGBTRIPLE p{static_cast<BYTE>(10+x), static_cast<BYTE>(20+y), static_cast<BYTE>(30+x+y)};
-            out.write(reinterpret_cast<char*>(&p), sizeof(p));
-        }
-        out.write(padding, pad);
-    }
-    out.close();
-    Image img;
-    std::string error;
-    assert(img.load(fixture, &error) && error.empty());
-    return img;
-}
-
 int main() {
-    Image gray = makeImage(2, 2);
-    RGBTRIPLE p = gray.getPixel(0,0);
-    const int expected = static_cast<int>(std::round((30+20+10)/3.0));
-    Grayscale().apply(gray);
-    p = gray.getPixel(0,0);
-    assert(p.rgbtRed == expected && p.rgbtGreen == expected && p.rgbtBlue == expected);
+    std::cout << "[PixLab Tests] Running OOP C++ Filter Test Suite...\n";
 
-    Image reflected = makeImage(2, 1);
-    const RGBTRIPLE left = reflected.getPixel(0,0);
-    const RGBTRIPLE right = reflected.getPixel(0,1);
-    Reflect().apply(reflected);
-    assert(reflected.getPixel(0,0).rgbtRed == right.rgbtRed);
-    assert(reflected.getPixel(0,1).rgbtRed == left.rgbtRed);
-
-    Image blur = makeImage(1, 1);
-    const RGBTRIPLE before = blur.getPixel(0,0);
-    Blur().apply(blur);
-    assert(blur.getPixel(0,0).rgbtRed == before.rgbtRed);
-    assert(blur.getPixel(0,0).rgbtGreen == before.rgbtGreen);
-    assert(blur.getPixel(0,0).rgbtBlue == before.rgbtBlue);
-
-    Image sepia = makeImage(1, 1);
-    const RGBTRIPLE orig = sepia.getPixel(0,0);
-    Sepia().apply(sepia);
-    const RGBTRIPLE transformed = sepia.getPixel(0,0);
-    assert(transformed.rgbtRed == std::min(255, static_cast<int>(std::round(.393*orig.rgbtRed + .769*orig.rgbtGreen + .189*orig.rgbtBlue))));
-
-    assert(sepia.save("pixlab_test_output.bmp"));
-    Image reloaded;
-    assert(reloaded.load("pixlab_test_output.bmp"));
-    assert(reloaded.getWidth() == 1 && reloaded.getHeight() == 1);
-    assert(reloaded.getPixel(0,0).rgbtRed == transformed.rgbtRed);
+    // 1. Test Encapsulated Image bounds checking
+    Image img(4, 4);
+    assert(img.getWidth() == 4);
+    assert(img.getHeight() == 4);
 
     bool threw = false;
-    try { (void)reloaded.getPixel(4,4); } catch (const std::out_of_range&) { threw = true; }
+    try {
+        (void)img.at(4, 4);
+    } catch (const std::out_of_range&) {
+        threw = true;
+    }
     assert(threw);
-    std::remove("pixlab_test_fixture.bmp");
-    std::remove("pixlab_test_output.bmp");
-    std::cout << "All PixLab filter tests passed.\n";
+    std::cout << "  ✓ Image bounds checking passed.\n";
+
+    // 2. Test BMP Serialization and Deserialization Round-trip
+    img.at(0, 0) = {255, 0, 0};   // Blue
+    img.at(0, 1) = {0, 255, 0};   // Green
+    img.at(1, 0) = {0, 0, 255};   // Red
+    img.at(1, 1) = {255, 255, 255}; // White
+
+    std::vector<uint8_t> bmpBytes = BMPHandler::serialize(img);
+    assert(bmpBytes.size() >= 54);
+    Image reloaded = BMPHandler::deserialize(bmpBytes.data(), bmpBytes.size());
+    assert(reloaded.getWidth() == 4 && reloaded.getHeight() == 4);
+    assert(reloaded.at(0, 0).b == 255 && reloaded.at(0, 0).g == 0 && reloaded.at(0, 0).r == 0);
+    std::cout << "  ✓ BMP Handler serialize/deserialize round-trip passed.\n";
+
+    // 3. Test GrayscaleFilter
+    Image grayTest(2, 2);
+    grayTest.at(0, 0) = {30, 20, 10}; // B=30, G=20, R=10
+    GrayscaleFilter grayFilter;
+    grayFilter.apply(grayTest);
+    uint8_t expectedGray = static_cast<uint8_t>(std::round(0.299 * 10 + 0.587 * 20 + 0.114 * 30));
+    assert(grayTest.at(0, 0).r == expectedGray);
+    assert(grayTest.at(0, 0).g == expectedGray);
+    assert(grayTest.at(0, 0).b == expectedGray);
+    std::cout << "  ✓ GrayscaleFilter (Rec. 601 Luminance) passed.\n";
+
+    // 4. Test ReflectFilter
+    Image reflectTest(2, 1);
+    reflectTest.at(0, 0) = {10, 20, 30};
+    reflectTest.at(0, 1) = {40, 50, 60};
+    ReflectFilter reflectFilter;
+    reflectFilter.apply(reflectTest);
+    assert(reflectTest.at(0, 0).b == 40 && reflectTest.at(0, 1).b == 10);
+    std::cout << "  ✓ ReflectFilter (Horizontal reflection) passed.\n";
+
+    // 5. Test FilterFactory Polymorphism
+    for (int typeId = 1; typeId <= 7; ++typeId) {
+        std::unique_ptr<Filter> filter = FilterFactory::create(typeId, 50.0f);
+        assert(filter != nullptr);
+        Image testCanvas(8, 8);
+        filter->apply(testCanvas);
+    }
+    std::cout << "  ✓ FilterFactory polymorphic instantiation (Filters 1-7) passed.\n";
+
+    // 6. Test UnsharpMaskEnhancer Multi-Stage Clarity Engine
+    Image enhanceTest(16, 16);
+    for (int r = 0; r < 16; ++r) {
+        for (int c = 0; c < 16; ++c) {
+            enhanceTest.at(r, c) = {static_cast<uint8_t>(r * 15), static_cast<uint8_t>(c * 15), 128};
+        }
+    }
+    UnsharpMaskEnhancer enhancer(2.2f, 0.18f, 1.18f);
+    enhancer.apply(enhanceTest);
+    assert(enhanceTest.getWidth() == 16 && enhanceTest.getHeight() == 16);
+    std::cout << "  ✓ UnsharpMaskEnhancer multi-stage execution passed.\n";
+
+    std::cout << "\nAll PixLab C++ OOP tests successfully passed!\n";
+    return 0;
 }

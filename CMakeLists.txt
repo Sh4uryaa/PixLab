@@ -32,4 +32,16 @@ if(EMSCRIPTEN)
     )
 else()
     add_executable(pixlab_cli ${PIXLAB_SOURCES})
+    add_executable(filter_tests
+        tests/filter_tests.cpp
+        src/Image.cpp
+        src/GrayscaleFilter.cpp
+        src/SepiaFilter.cpp
+        src/BlurFilter.cpp
+        src/ReflectFilter.cpp
+        src/PixelateFilter.cpp
+        src/VignetteFilter.cpp
+        src/UnsharpMaskEnhancer.cpp
+        src/BMPHandler.cpp
+    )
 endif()

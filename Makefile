@@ -11,13 +11,19 @@ SRC = src/Image.cpp \
       src/UnsharpMaskEnhancer.cpp \
       src/BMPHandler.cpp
 
-.PHONY: all wasm cli clean
+.PHONY: all wasm cli test clean
 
 all: wasm
 
 # Native command-line executable
 cli: src/main.cpp $(SRC)
 	$(CXX) $(CXXFLAGS) $^ -o pixlab_cli
+
+# Run test suite
+test: tests/filter_tests.cpp $(SRC)
+	$(CXX) $(CXXFLAGS) $^ -o filter_tests
+	./filter_tests
+	rm -f filter_tests
 
 # Emscripten WebAssembly compilation to pixlab_wasm.js & pixlab_wasm.wasm
 wasm: src/main.cpp $(SRC)
@@ -29,4 +35,4 @@ wasm: src/main.cpp $(SRC)
 		-o pixlab_wasm.js
 
 clean:
-	rm -f pixlab_cli pixlab_wasm.js pixlab_wasm.wasm
+	rm -f pixlab_cli pixlab_wasm.js pixlab_wasm.wasm filter_tests
