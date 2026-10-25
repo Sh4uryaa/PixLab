@@ -7,7 +7,7 @@
  * - Container aspect ratio adaptation so images contain at their original natural size
  * - Multi-pass C++17 filters (Grayscale, Sepia, Blur, Reflection, Pixelate, Vignette)
  * - C++ Unsharp Mask Image Enhancement (High-pass spatial sharpening)
- * - Memory-recycled in-RAM BMP export and download
+ * - Multi-format export: Download in PNG, JPG, or BMP
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -42,14 +42,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const applyFilterBtn = document.getElementById("applyFilterBtn");
     const applyEnhancementBtn = document.getElementById("applyEnhancementBtn");
     const downloadBtn = document.getElementById("downloadBtn");
+    const downloadFormat = document.getElementById("downloadFormat");
 
     // Image references (index.html uses filterExampleImg, enhance.html uses beforeImage)
     const originalImg = document.getElementById("filterExampleImg") || document.getElementById("beforeImage");
     const resultImg = document.getElementById("filterExampleResultImg") || document.getElementById("afterImage");
 
     let currentImageElement = null; // Stored HTMLImageElement of the uploaded image
-    let currentFileName = "image.png";
+    let currentFileName = document.getElementById("beforeImage") ? "enhancedImage.png" : "exampleImage.png";
+    let currentAppliedFilter = document.getElementById("beforeImage") ? "enhanced" : "grayscale";
     let processedBlobUrl = null;
+    let lastProcessedBmpBytes = null;
+    let activeDownloadUrls = [];
 
     // Filter type mappings matching C++ FilterFactory::FilterType
     const FILTER_MAP = {
@@ -83,7 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // -------------------------------------------------------------
-    // 3. Helper: Convert Any Image to 24-bit Uncompressed Windows BMP
+    // 3. Helpers: BMP Conversion & Parsing in RAM
     // -------------------------------------------------------------
     function imageTo24BitBmp(img) {
         const width = img.naturalWidth || img.width;
@@ -152,6 +156,54 @@ document.addEventListener("DOMContentLoaded", () => {
         return u8;
     }
 
+    // Convert raw 24-bit BMP binary into browser ImageData
+    function bmpToImageData(bmpBytes, ctx) {
+        if (!bmpBytes || bmpBytes.length < 54) return null;
+        const view = new DataView(bmpBytes.buffer, bmpBytes.byteOffset, bmpBytes.byteLength);
+        if (view.getUint16(0, true) !== 0x4D42) return null; // 'BM'
+
+        const pixelOffset = view.getUint32(10, true);
+        const width = view.getInt32(18, true);
+        const rawHeight = view.getInt32(22, true);
+        const height = Math.abs(rawHeight);
+        const isBottomUp = rawHeight > 0;
+        const bitsPerPixel = view.getUint16(28, true);
+
+        if (width <= 0 || height <= 0 || bitsPerPixel !== 24) return null;
+
+        const padding = (4 - (width * 3) % 4) % 4;
+        const rowStride = width * 3 + padding;
+        const imgData = ctx.createImageData(width, height);
+        const rgba = imgData.data;
+
+        for (let row = 0; row < height; ++row) {
+            const destRow = isBottomUp ? (height - 1 - row) : row;
+            const rowStart = pixelOffset + (row * rowStride);
+
+            for (let col = 0; col < width; ++col) {
+                const srcIdx = rowStart + (col * 3);
+                const destIdx = (destRow * width + col) * 4;
+                rgba[destIdx + 0] = bmpBytes[srcIdx + 2]; // Red
+                rgba[destIdx + 1] = bmpBytes[srcIdx + 1]; // Green
+                rgba[destIdx + 2] = bmpBytes[srcIdx + 0]; // Blue
+                rgba[destIdx + 3] = 255;                  // Alpha
+            }
+        }
+
+        return imgData;
+    }
+
+    // Safely manage Object URLs without premature revocation
+    function registerDownloadUrl(url) {
+        if (!url) return;
+        activeDownloadUrls.push(url);
+        // Retain object URL for 2 minutes to allow browser download manager to finish saving
+        setTimeout(() => {
+            try { URL.revokeObjectURL(url); } catch (_) {}
+            activeDownloadUrls = activeDownloadUrls.filter(u => u !== url);
+        }, 120000);
+    }
+
     // -------------------------------------------------------------
     // 4. File Upload & Drag-and-Drop Handling
     // -------------------------------------------------------------
@@ -162,6 +214,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         currentFileName = file.name;
+        lastProcessedBmpBytes = null; // Clear previous filter buffer
+
+        // Auto-detect format and pre-select in format dropdown
+        if (downloadFormat) {
+            if (/\.jpe?g$/i.test(file.name) || file.type === "image/jpeg") {
+                downloadFormat.value = "jpeg";
+            } else if (/\.png$/i.test(file.name) || file.type === "image/png") {
+                downloadFormat.value = "png";
+            } else if (/\.bmp$/i.test(file.name) || file.type === "image/bmp") {
+                downloadFormat.value = "bmp";
+            }
+        }
+
         const reader = new FileReader();
 
         reader.onload = (e) => {
@@ -189,11 +254,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (desc) desc.textContent = `Loaded: ${file.name}`;
                     const btn = uploadBox.querySelector(".upload-button");
                     if (btn) btn.textContent = "✓ Image Ready (Click or drop to replace)";
-                }
-
-                // Clear previous download state
-                if (downloadBtn) {
-                    downloadBtn.removeAttribute("href");
                 }
             };
             img.src = e.target.result;
@@ -261,6 +321,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         try {
+            currentAppliedFilter = filterName;
+
             // 1. Convert image to 24-bit uncompressed BMP binary in RAM
             const bmpBytes = imageTo24BitBmp(srcImg);
             const inputSize = bmpBytes.length;
@@ -283,6 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 5. Clone output buffer safely into JavaScript typed array
             const safeOutput = new Uint8Array(Module.HEAPU8.buffer, outPtr, outSize).slice();
+            lastProcessedBmpBytes = safeOutput;
 
             // 6. Free both WASM allocations explicitly (resets allocator back to base)
             Module._freeBuffer(inPtr);
@@ -290,7 +353,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 7. Create Object URL from BMP Blob
             if (processedBlobUrl) {
-                URL.revokeObjectURL(processedBlobUrl);
+                try { URL.revokeObjectURL(processedBlobUrl); } catch (_) {}
             }
             const blob = new Blob([safeOutput], { type: "image/bmp" });
             processedBlobUrl = URL.createObjectURL(blob);
@@ -300,13 +363,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 resultImg.src = processedBlobUrl;
             }
 
-            // 9. Enable and configure Download button
-            if (downloadBtn) {
-                const baseName = currentFileName.replace(/\.[^/.]+$/, "");
-                downloadBtn.href = processedBlobUrl;
-                downloadBtn.download = `pixlab_${baseName}_${filterName}.bmp`;
-            }
-
         } catch (err) {
             console.error("[PixLab] Filter execution error:", err);
             alert(`Processing failed: ${err.message}`);
@@ -314,7 +370,138 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // -------------------------------------------------------------
-    // 6. Action Button Listeners
+    // 6. Download Trigger (Supports PNG, JPG, and BMP)
+    // -------------------------------------------------------------
+    function triggerDownload(url, filename) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    if (downloadBtn) {
+        downloadBtn.addEventListener("click", () => {
+            const chosenFormat = (downloadFormat ? downloadFormat.value : "png").toLowerCase();
+            const baseName = currentFileName.replace(/\.[^/.]+$/, "") || "image";
+            const filterTag = currentAppliedFilter || "processed";
+            const isJpeg = (chosenFormat === "jpeg" || chosenFormat === "jpg");
+            const isBmp = (chosenFormat === "bmp");
+            const ext = isJpeg ? "jpg" : (isBmp ? "bmp" : "png");
+            const mimeType = isJpeg ? "image/jpeg" : (isBmp ? "image/bmp" : "image/png");
+            const filename = `pixlab_${baseName}_${filterTag}.${ext}`;
+
+            // ---------------------------------------------------------
+            // Case 1: BMP Export
+            // ---------------------------------------------------------
+            if (isBmp) {
+                let bmpBytes = lastProcessedBmpBytes;
+                if (!bmpBytes) {
+                    const srcImg = currentImageElement || originalImg;
+                    if (!srcImg) {
+                        alert("Please select or process an image first.");
+                        return;
+                    }
+                    try {
+                        bmpBytes = imageTo24BitBmp(srcImg);
+                    } catch (e) {
+                        alert("Could not process image for BMP download.");
+                        return;
+                    }
+                }
+
+                const blob = new Blob([bmpBytes], { type: "image/bmp" });
+                const url = URL.createObjectURL(blob);
+                registerDownloadUrl(url);
+                triggerDownload(url, filename);
+                return;
+            }
+
+            // ---------------------------------------------------------
+            // Case 2: PNG or JPG Export
+            // ---------------------------------------------------------
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
+            let canvasReady = false;
+
+            // Path A: If we have pristine C++ processed BMP bytes in memory, render via ImageData
+            if (lastProcessedBmpBytes) {
+                const imgData = bmpToImageData(lastProcessedBmpBytes, ctx);
+                if (imgData) {
+                    canvas.width = imgData.width;
+                    canvas.height = imgData.height;
+
+                    if (isJpeg) {
+                        // For JPEG, fill solid white background first
+                        ctx.fillStyle = "#ffffff";
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    }
+
+                    ctx.putImageData(imgData, 0, 0);
+                    canvasReady = true;
+                }
+            }
+
+            // Path B: Fallback to rendering from image element (e.g. before any filter was applied)
+            if (!canvasReady) {
+                const targetImg = resultImg || originalImg || currentImageElement;
+                if (!targetImg || (!targetImg.src && !currentImageElement)) {
+                    alert("Please select or process an image first.");
+                    return;
+                }
+
+                const w = targetImg.naturalWidth || targetImg.width;
+                const h = targetImg.naturalHeight || targetImg.height;
+
+                if (!w || !h || w <= 0 || h <= 0) {
+                    alert("Image is still loading. Please try again.");
+                    return;
+                }
+
+                canvas.width = w;
+                canvas.height = h;
+
+                if (isJpeg) {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, 0, w, h);
+                }
+
+                ctx.drawImage(targetImg, 0, 0, w, h);
+                canvasReady = true;
+            }
+
+            // Export mechanism: Synchronous toDataURL first (guarantees download within user click event)
+            try {
+                const dataUrl = canvas.toDataURL(mimeType, 0.95);
+                if (dataUrl && dataUrl.length > 22) { // "data:image/png;base64," is 22 chars
+                    triggerDownload(dataUrl, filename);
+                    return;
+                }
+            } catch (e) {
+                console.warn("[PixLab] toDataURL fallback to toBlob:", e);
+            }
+
+            // Fallback: canvas.toBlob with registered 2-minute lifetime URL
+            if (typeof canvas.toBlob === "function") {
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        alert("Could not generate image file. Please try another format.");
+                        return;
+                    }
+                    const url = URL.createObjectURL(blob);
+                    registerDownloadUrl(url);
+                    triggerDownload(url, filename);
+                }, mimeType, 0.95);
+            } else {
+                alert("Image export is not supported in this browser.");
+            }
+        });
+    }
+
+    // -------------------------------------------------------------
+    // 7. Action Button Listeners
     // -------------------------------------------------------------
 
     // "Apply Filter" button on index.html
