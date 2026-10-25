@@ -43,8 +43,24 @@ public:
             case VIGNETTE:
                 return std::make_unique<VignetteFilter>();
             case ENHANCE_UNSHARP: {
-                float alpha = param > 0.0f ? param : 1.5f;
-                return std::make_unique<UnsharpMaskEnhancer>(alpha);
+                // If param > 5.0f, interpret as user percentage (10.0f - 100.0f)
+                // Otherwise interpret as direct alpha factor
+                float alpha, contrast, vibrance;
+                if (param > 5.0f) {
+                    float p = std::max(0.10f, std::min(1.0f, param / 100.0f));
+                    alpha = 0.3f + p * 3.3f;
+                    contrast = 0.04f + p * 0.28f;
+                    vibrance = 1.02f + p * 0.28f;
+                } else if (param > 0.0f) {
+                    alpha = param;
+                    contrast = 0.18f;
+                    vibrance = 1.18f;
+                } else {
+                    alpha = 2.0f;
+                    contrast = 0.18f;
+                    vibrance = 1.18f;
+                }
+                return std::make_unique<UnsharpMaskEnhancer>(alpha, contrast, vibrance);
             }
             default:
                 throw std::invalid_argument("Unknown filter type ID: " + std::to_string(filterType));

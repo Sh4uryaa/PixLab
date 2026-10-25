@@ -94,6 +94,25 @@
                     id="fileInput"
                     accept="image/*">
 
+                <div class="enhance-intensity-control">
+                    <div class="intensity-label-row">
+                        <label for="enhanceIntensitySlider">Enhancement Strength:</label>
+                        <span id="enhanceIntensityValue">60%</span>
+                    </div>
+                    <input type="range" 
+                        id="enhanceIntensitySlider" 
+                        min="10" 
+                        max="100" 
+                        value="60" 
+                        step="5"
+                        aria-label="Enhancement Strength Percentage">
+                    <div class="intensity-scale-labels">
+                        <span>Gentle (10%)</span>
+                        <span>Balanced (60%)</span>
+                        <span>Maximum (100%)</span>
+                    </div>
+                </div>
+
                 <button id="applyEnhancementBtn">
                     Enhance Image
                 </button>

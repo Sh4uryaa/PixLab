@@ -530,15 +530,35 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // "Enhance Image" button on enhance.html
+    const enhanceIntensitySlider = document.getElementById("enhanceIntensitySlider");
+    const enhanceIntensityValue = document.getElementById("enhanceIntensityValue");
+    let hasEnhancedOnce = false;
+
     if (applyEnhancementBtn) {
+        if (enhanceIntensitySlider && enhanceIntensityValue) {
+            enhanceIntensitySlider.addEventListener("input", () => {
+                enhanceIntensityValue.textContent = `${enhanceIntensitySlider.value}%`;
+            });
+
+            // If user already enhanced once, moving the slider live updates the result
+            enhanceIntensitySlider.addEventListener("change", () => {
+                if (hasEnhancedOnce) {
+                    applyEnhancementBtn.click();
+                }
+            });
+        }
+
         applyEnhancementBtn.addEventListener("click", async () => {
             const originalText = applyEnhancementBtn.textContent;
             applyEnhancementBtn.textContent = "Enhancing...";
             applyEnhancementBtn.disabled = true;
 
+            const percentage = enhanceIntensitySlider ? parseFloat(enhanceIntensitySlider.value) : 60;
+
             await new Promise((resolve) => setTimeout(resolve, 30));
-            // Filter 7: Multi-Stage Unsharp Mask & Clarity Enhancer with alpha = 2.2
-            await processWithWasm(7, 2.2, "enhanced");
+            // Filter 7: Multi-Stage Unsharp Mask & Clarity Enhancer with user percentage
+            await processWithWasm(7, percentage, "enhanced");
+            hasEnhancedOnce = true;
 
             applyEnhancementBtn.textContent = originalText;
             applyEnhancementBtn.disabled = false;

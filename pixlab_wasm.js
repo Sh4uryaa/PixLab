@@ -232,9 +232,21 @@
                     }
                 }
             } else if (filterCode === 7) { // Multi-Stage Unsharp Mask & Clarity Enhancer
-                const alpha = param > 0 ? param : 2.0;
-                const contrastFactor = 0.18;
-                const vibranceFactor = 1.18;
+                let alpha, contrastFactor, vibranceFactor;
+                if (param > 5.0) { // Percentage mode (e.g. 10 to 100)
+                    const p = Math.max(0.10, Math.min(1.0, param / 100.0));
+                    alpha = 0.3 + p * 3.3;
+                    contrastFactor = 0.04 + p * 0.28;
+                    vibranceFactor = 1.02 + p * 0.28;
+                } else if (param > 0.0) {
+                    alpha = param;
+                    contrastFactor = 0.18;
+                    vibranceFactor = 1.18;
+                } else {
+                    alpha = 2.0;
+                    contrastFactor = 0.18;
+                    vibranceFactor = 1.18;
+                }
 
                 // 1. Adaptive separable box blur to extract low-frequency spatial base
                 const radius = Math.max(2, Math.min(6, Math.floor(Math.min(width, height) / 100)));
