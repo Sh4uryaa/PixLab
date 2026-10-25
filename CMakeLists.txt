@@ -27,9 +27,8 @@ if(EMSCRIPTEN)
         SUFFIX ".js"
         LINK_FLAGS "-O3 -s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_FUNCTIONS=\"['_processImage','_getOutputSize','_freeBuffer','_malloc','_free']\" -s EXPORTED_RUNTIME_METHODS=\"['ccall','cwrap']\""
     )
-    # Output directly to web directory
     set_target_properties(pixlab_wasm PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/web"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     )
 else()
     add_executable(pixlab_cli ${PIXLAB_SOURCES})

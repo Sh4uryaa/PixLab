@@ -51,7 +51,7 @@
     }
 
     /**
-     * Fallback pure arithmetic C++ algorithm implementation matching Image.cpp,
+     * Pure arithmetic C++ algorithm implementation matching Image.cpp,
      * Filter classes, and BMPHandler.cpp logic byte-for-byte.
      */
     function fallbackProcessImage(inputPtr, inputSize, filterCode, param) {
@@ -205,7 +205,7 @@
                     }
                 }
             } else if (filterCode === 7) { // Unsharp Mask Enhancer
-                const alpha = param > 0 ? param : 1.5;
+                const alpha = param > 0 ? param : 1.8;
                 const blurred = new Uint8Array(pixels);
                 // First blur copy
                 for (let r = 0; r < height; ++r) {
@@ -218,9 +218,9 @@
                                 const nc = c + dc;
                                 if (nc < 0 || nc >= width) continue;
                                 const idx = (nr * width + nc) * 3;
-                                sumB += pixels[idx + 0];
-                                sumG += pixels[idx + 1];
-                                sumR += pixels[idx + 2];
+                                sumB += copy ? copy[idx + 0] : blurred[idx + 0];
+                                sumG += copy ? copy[idx + 1] : blurred[idx + 1];
+                                sumR += copy ? copy[idx + 2] : blurred[idx + 2];
                                 ++count;
                             }
                         }
