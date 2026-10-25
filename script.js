@@ -311,8 +311,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Determine source image: user uploaded image or default preview
         let srcImg = currentImageElement;
-        if (!srcImg && originalImg) {
-            srcImg = originalImg;
+        if (!srcImg) {
+            // On enhance page, if user hasn't uploaded a photo yet, enhance the high-res afterImage
+            // so the demo comparison shows razor-sharp enhanced Fuji vs blurry beforeImage
+            const enhanceAfter = document.getElementById("afterImage");
+            if (enhanceAfter && originalImg && originalImg.id === "beforeImage") {
+                srcImg = enhanceAfter;
+            } else {
+                srcImg = originalImg;
+            }
         }
 
         if (!srcImg || !srcImg.complete || srcImg.naturalWidth === 0) {
@@ -530,8 +537,8 @@ document.addEventListener("DOMContentLoaded", () => {
             applyEnhancementBtn.disabled = true;
 
             await new Promise((resolve) => setTimeout(resolve, 30));
-            // Filter 7: UnsharpMaskEnhancer with alpha = 1.8
-            await processWithWasm(7, 1.8, "enhanced");
+            // Filter 7: Multi-Stage Unsharp Mask & Clarity Enhancer with alpha = 2.2
+            await processWithWasm(7, 2.2, "enhanced");
 
             applyEnhancementBtn.textContent = originalText;
             applyEnhancementBtn.disabled = false;

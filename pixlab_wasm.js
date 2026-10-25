@@ -231,46 +231,129 @@
                         pixels[idx + 2] = clampByte(Math.round(pixels[idx + 2] * factor));
                     }
                 }
-            } else if (filterCode === 7) { // Unsharp Mask Enhancer
-                const alpha = param > 0 ? param : 1.8;
-                const blurred = new Uint8Array(pixels);
-                // First blur copy
-                for (let r = 0; r < height; ++r) {
-                    for (let c = 0; c < width; ++c) {
-                        let sumR = 0, sumG = 0, sumB = 0, count = 0;
-                        for (let dr = -1; dr <= 1; ++dr) {
-                            const nr = r + dr;
-                            if (nr < 0 || nr >= height) continue;
-                            for (let dc = -1; dc <= 1; ++dc) {
-                                const nc = c + dc;
-                                if (nc < 0 || nc >= width) continue;
-                                const idx = (nr * width + nc) * 3;
-                                sumB += blurred[idx + 0];
-                                sumG += blurred[idx + 1];
-                                sumR += blurred[idx + 2];
-                                ++count;
-                            }
+            } else if (filterCode === 7) { // Multi-Stage Unsharp Mask & Clarity Enhancer
+                const alpha = param > 0 ? param : 2.0;
+                const contrastFactor = 0.18;
+                const vibranceFactor = 1.18;
+
+                // 1. Adaptive separable box blur to extract low-frequency spatial base
+                const radius = Math.max(2, Math.min(6, Math.floor(Math.min(width, height) / 100)));
+                const temp = new Uint8Array(width * height * 3);
+                const blurred = new Uint8Array(width * height * 3);
+
+                // Horizontal pass: pixels -> temp
+                for (let y = 0; y < height; ++y) {
+                    let sumB = 0, sumG = 0, sumR = 0, count = 0;
+                    const initialRight = Math.min(width - 1, radius);
+                    for (let x = 0; x <= initialRight; ++x) {
+                        const idx = (y * width + x) * 3;
+                        sumB += pixels[idx + 0];
+                        sumG += pixels[idx + 1];
+                        sumR += pixels[idx + 2];
+                        ++count;
+                    }
+
+                    for (let x = 0; x < width; ++x) {
+                        const nextRight = x + radius;
+                        if (nextRight < width && x > 0) {
+                            const idx = (y * width + nextRight) * 3;
+                            sumB += pixels[idx + 0];
+                            sumG += pixels[idx + 1];
+                            sumR += pixels[idx + 2];
+                            ++count;
                         }
-                        const outIdx = (r * width + c) * 3;
+                        const prevLeft = x - radius - 1;
+                        if (prevLeft >= 0) {
+                            const idx = (y * width + prevLeft) * 3;
+                            sumB -= pixels[idx + 0];
+                            sumG -= pixels[idx + 1];
+                            sumR -= pixels[idx + 2];
+                            --count;
+                        }
+
+                        const outIdx = (y * width + x) * 3;
+                        temp[outIdx + 0] = clampByte(Math.round(sumB / count));
+                        temp[outIdx + 1] = clampByte(Math.round(sumG / count));
+                        temp[outIdx + 2] = clampByte(Math.round(sumR / count));
+                    }
+                }
+
+                // Vertical pass: temp -> blurred
+                for (let x = 0; x < width; ++x) {
+                    let sumB = 0, sumG = 0, sumR = 0, count = 0;
+                    const initialBottom = Math.min(height - 1, radius);
+                    for (let y = 0; y <= initialBottom; ++y) {
+                        const idx = (y * width + x) * 3;
+                        sumB += temp[idx + 0];
+                        sumG += temp[idx + 1];
+                        sumR += temp[idx + 2];
+                        ++count;
+                    }
+
+                    for (let y = 0; y < height; ++y) {
+                        const nextBottom = y + radius;
+                        if (nextBottom < height && y > 0) {
+                            const idx = (nextBottom * width + x) * 3;
+                            sumB += temp[idx + 0];
+                            sumG += temp[idx + 1];
+                            sumR += temp[idx + 2];
+                            ++count;
+                        }
+                        const prevTop = y - radius - 1;
+                        if (prevTop >= 0) {
+                            const idx = (prevTop * width + x) * 3;
+                            sumB -= temp[idx + 0];
+                            sumG -= temp[idx + 1];
+                            sumR -= temp[idx + 2];
+                            --count;
+                        }
+
+                        const outIdx = (y * width + x) * 3;
                         blurred[outIdx + 0] = clampByte(Math.round(sumB / count));
                         blurred[outIdx + 1] = clampByte(Math.round(sumG / count));
                         blurred[outIdx + 2] = clampByte(Math.round(sumR / count));
                     }
                 }
 
-                // High-pass amplification: orig + (orig - blur) * alpha
+                // Precompute 256-entry S-curve LUT for micro-contrast tone mapping
+                const lut = new Uint8Array(256);
+                for (let i = 0; i < 256; ++i) {
+                    const n = i / 255.0;
+                    const curved = n + contrastFactor * (n - 0.5) * (1.0 - Math.abs(2.0 * n - 1.0));
+                    lut[i] = clampByte(Math.round(curved * 255.0));
+                }
+
+                // 2. High-pass sharpening + 3. Micro-contrast + 4. Vibrance boost
                 for (let i = 0; i < width * height; ++i) {
                     const origB = pixels[i * 3 + 0];
                     const origG = pixels[i * 3 + 1];
                     const origR = pixels[i * 3 + 2];
 
+                    // Unsharp Mask difference
                     const diffB = origB - blurred[i * 3 + 0];
                     const diffG = origG - blurred[i * 3 + 1];
                     const diffR = origR - blurred[i * 3 + 2];
 
-                    pixels[i * 3 + 0] = clampByte(Math.round(origB + diffB * alpha));
-                    pixels[i * 3 + 1] = clampByte(Math.round(origG + diffG * alpha));
-                    pixels[i * 3 + 2] = clampByte(Math.round(origR + diffR * alpha));
+                    const sharpB = clampByte(Math.round(origB + diffB * alpha));
+                    const sharpG = clampByte(Math.round(origG + diffG * alpha));
+                    const sharpR = clampByte(Math.round(origR + diffR * alpha));
+
+                    // Micro-contrast S-curve
+                    let curR = lut[sharpR];
+                    let curG = lut[sharpG];
+                    let curB = lut[sharpB];
+
+                    // Perceptual luminance Rec. 601
+                    const lum = 0.299 * curR + 0.587 * curG + 0.114 * curB;
+
+                    // Vibrance lift
+                    curR = lum + (curR - lum) * vibranceFactor;
+                    curG = lum + (curG - lum) * vibranceFactor;
+                    curB = lum + (curB - lum) * vibranceFactor;
+
+                    pixels[i * 3 + 0] = clampByte(Math.round(curB));
+                    pixels[i * 3 + 1] = clampByte(Math.round(curG));
+                    pixels[i * 3 + 2] = clampByte(Math.round(curR));
                 }
             }
 
