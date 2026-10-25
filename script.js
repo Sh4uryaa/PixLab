@@ -4,9 +4,10 @@
  * Connects the PixLab UI to the C++ WebAssembly (WASM) image processing engine:
  * - Interactive before/after split slider
  * - Drag-and-drop & file upload with universal format support (PNG, JPG, BMP, WebP)
- * - Pure arithmetic C++17 filters (Grayscale, Sepia, Blur, Reflection, Pixelate, Vignette)
+ * - Container aspect ratio adaptation so images contain at their original natural size
+ * - Multi-pass C++17 filters (Grayscale, Sepia, Blur, Reflection, Pixelate, Vignette)
  * - C++ Unsharp Mask Image Enhancement (High-pass spatial sharpening)
- * - Direct in-memory BMP export and download
+ * - Memory-recycled in-RAM BMP export and download
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -46,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const originalImg = document.getElementById("filterExampleImg") || document.getElementById("beforeImage");
     const resultImg = document.getElementById("filterExampleResultImg") || document.getElementById("afterImage");
 
-    let currentImageElement = null; // Stored HTMLImageElement for canvas conversions
+    let currentImageElement = null; // Stored HTMLImageElement of the uploaded image
     let currentFileName = "image.png";
     let processedBlobUrl = null;
 
@@ -59,6 +60,27 @@ document.addEventListener("DOMContentLoaded", () => {
         pixelate: { id: 5, param: 10.0, name: "pixelate" },
         vignette: { id: 6, param: 0.0, name: "vignette" }
     };
+
+    // Adapt container aspect ratio to original image so it contains at natural size
+    function updateContainerAspectRatio(img) {
+        if (!img) return;
+        const container = img.closest(".comparison-container");
+        if (container && img.naturalWidth > 0 && img.naturalHeight > 0) {
+            container.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+        }
+    }
+
+    if (originalImg) {
+        if (originalImg.complete && originalImg.naturalWidth > 0) {
+            updateContainerAspectRatio(originalImg);
+            currentImageElement = originalImg;
+        } else {
+            originalImg.addEventListener("load", () => {
+                updateContainerAspectRatio(originalImg);
+                if (!currentImageElement) currentImageElement = originalImg;
+            });
+        }
+    }
 
     // -------------------------------------------------------------
     // 3. Helper: Convert Any Image to 24-bit Uncompressed Windows BMP
@@ -99,7 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // BITMAPINFOHEADER (40 bytes)
         view.setUint32(14, 40, true);
         view.setInt32(18, width, true);
-        view.setInt32(22, height, true); // Positive = bottom-up
+        view.setInt32(22, height, true); // Positive = standard bottom-up
         view.setUint16(26, 1, true);
         view.setUint16(28, 24, true);    // 24-bit uncompressed RGB
         view.setUint32(30, 0, true);     // BI_RGB
@@ -117,9 +139,9 @@ document.addEventListener("DOMContentLoaded", () => {
             for (let col = 0; col < width; ++col) {
                 const srcIdx = (sourceRow * width + col) * 4;
                 const destIdx = rowStart + (col * 3);
-                u8[destIdx + 0] = rgba[srcIdx + 2]; // B
-                u8[destIdx + 1] = rgba[srcIdx + 1]; // G
-                u8[destIdx + 2] = rgba[srcIdx + 0]; // R
+                u8[destIdx + 0] = rgba[srcIdx + 2]; // Blue
+                u8[destIdx + 1] = rgba[srcIdx + 1]; // Green
+                u8[destIdx + 2] = rgba[srcIdx + 0]; // Red
             }
 
             for (let p = 0; p < padding; ++p) {
@@ -151,6 +173,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (originalImg) originalImg.src = img.src;
                 if (resultImg) resultImg.src = img.src;
 
+                // Ensure container adapts to natural aspect ratio without enlarging/cropping
+                updateContainerAspectRatio(img);
+
                 // Reset split slider to 50%
                 const slider = document.getElementById("comparisonSlider");
                 if (slider) {
@@ -163,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const desc = uploadBox.querySelector("p");
                     if (desc) desc.textContent = `Loaded: ${file.name}`;
                     const btn = uploadBox.querySelector(".upload-button");
-                    if (btn) btn.textContent = "✓ Image Ready (Click to change)";
+                    if (btn) btn.textContent = "✓ Image Ready (Click or drop to replace)";
                 }
 
                 // Clear previous download state
@@ -181,12 +206,12 @@ document.addEventListener("DOMContentLoaded", () => {
         fileInput.addEventListener("change", (e) => {
             if (e.target.files && e.target.files[0]) {
                 handleSelectedFile(e.target.files[0]);
+                fileInput.value = "";
             }
         });
     }
 
     if (uploadBox) {
-        // Drag over & drag leave
         uploadBox.addEventListener("dragover", (e) => {
             e.preventDefault();
             uploadBox.classList.add("drag-over");
@@ -202,6 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
             uploadBox.classList.remove("drag-over");
             if (e.dataTransfer.files && e.dataTransfer.files[0]) {
                 handleSelectedFile(e.dataTransfer.files[0]);
+                if (fileInput) fileInput.value = "";
             }
         });
     }
@@ -216,7 +242,14 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Determine source image: user upload or the initial preview image
+        // Re-synchronize memory view in case WebAssembly heap grew
+        if (!Module.HEAPU8 || Module.HEAPU8.byteLength === 0) {
+            if (window.PixLabModule && window.PixLabModule.HEAPU8) {
+                Module.HEAPU8 = window.PixLabModule.HEAPU8;
+            }
+        }
+
+        // Determine source image: user uploaded image or default preview
         let srcImg = currentImageElement;
         if (!srcImg && originalImg) {
             srcImg = originalImg;
@@ -251,7 +284,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // 5. Clone output buffer safely into JavaScript typed array
             const safeOutput = new Uint8Array(Module.HEAPU8.buffer, outPtr, outSize).slice();
 
-            // 6. Free both WASM allocations explicitly
+            // 6. Free both WASM allocations explicitly (resets allocator back to base)
             Module._freeBuffer(inPtr);
             Module._freeBuffer(outPtr);
 
@@ -316,16 +349,5 @@ document.addEventListener("DOMContentLoaded", () => {
             applyEnhancementBtn.textContent = originalText;
             applyEnhancementBtn.disabled = false;
         });
-    }
-
-    // Initial default image caching
-    if (originalImg && !currentImageElement) {
-        if (originalImg.complete && originalImg.naturalWidth > 0) {
-            currentImageElement = originalImg;
-        } else {
-            originalImg.addEventListener("load", () => {
-                currentImageElement = originalImg;
-            });
-        }
     }
 });

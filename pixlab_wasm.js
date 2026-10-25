@@ -16,8 +16,11 @@
     let lastOutputSize = 0;
 
     function updateMemoryView() {
-        if (heapU8.buffer !== memory.buffer) {
+        if (!heapU8 || heapU8.buffer !== memory.buffer || heapU8.byteLength === 0) {
             heapU8 = new Uint8Array(memory.buffer);
+            PixLabModule.HEAPU8 = heapU8;
+            if (window.Module) window.Module.HEAPU8 = heapU8;
+            if (window.PixLabModule) window.PixLabModule.HEAPU8 = heapU8;
         }
     }
 
@@ -43,6 +46,10 @@
     function wasmFree(ptr) {
         if (allocatedBlocks.has(ptr)) {
             allocatedBlocks.delete(ptr);
+        }
+        // When all active heap blocks are freed, reset allocator back to 1MB base
+        if (allocatedBlocks.size === 0) {
+            nextAllocPtr = 1024 * 1024;
         }
     }
 
@@ -119,25 +126,45 @@
                     pixels[i * 3 + 1] = sepiaG;
                     pixels[i * 3 + 2] = sepiaR;
                 }
-            } else if (filterCode === 3) { // 3x3 Box Blur
-                const copy = new Uint8Array(pixels);
-                for (let r = 0; r < height; ++r) {
-                    for (let c = 0; c < width; ++c) {
-                        let sumR = 0, sumG = 0, sumB = 0, count = 0;
-                        for (let dr = -1; dr <= 1; ++dr) {
-                            const nr = r + dr;
-                            if (nr < 0 || nr >= height) continue;
-                            for (let dc = -1; dc <= 1; ++dc) {
-                                const nc = c + dc;
-                                if (nc < 0 || nc >= width) continue;
-                                const idx = (nr * width + nc) * 3;
-                                sumB += copy[idx + 0];
-                                sumG += copy[idx + 1];
-                                sumR += copy[idx + 2];
-                                ++count;
-                            }
+            } else if (filterCode === 3) { // Blur (Separable Box Blur with noticeable radius)
+                const radius = Math.max(3, Math.min(20, Math.floor(Math.min(width, height) / 60)));
+                const temp = new Uint8Array(pixels.length);
+
+                // Horizontal pass: pixels -> temp
+                for (let y = 0; y < height; ++y) {
+                    const rowOffset = y * width * 3;
+                    for (let x = 0; x < width; ++x) {
+                        let sumB = 0, sumG = 0, sumR = 0, count = 0;
+                        const xMin = Math.max(0, x - radius);
+                        const xMax = Math.min(width - 1, x + radius);
+                        for (let k = xMin; k <= xMax; ++k) {
+                            const idx = rowOffset + k * 3;
+                            sumB += pixels[idx + 0];
+                            sumG += pixels[idx + 1];
+                            sumR += pixels[idx + 2];
+                            count++;
                         }
-                        const outIdx = (r * width + c) * 3;
+                        const outIdx = rowOffset + x * 3;
+                        temp[outIdx + 0] = clampByte(Math.round(sumB / count));
+                        temp[outIdx + 1] = clampByte(Math.round(sumG / count));
+                        temp[outIdx + 2] = clampByte(Math.round(sumR / count));
+                    }
+                }
+
+                // Vertical pass: temp -> pixels
+                for (let x = 0; x < width; ++x) {
+                    for (let y = 0; y < height; ++y) {
+                        let sumB = 0, sumG = 0, sumR = 0, count = 0;
+                        const yMin = Math.max(0, y - radius);
+                        const yMax = Math.min(height - 1, y + radius);
+                        for (let k = yMin; k <= yMax; ++k) {
+                            const idx = (k * width + x) * 3;
+                            sumB += temp[idx + 0];
+                            sumG += temp[idx + 1];
+                            sumR += temp[idx + 2];
+                            count++;
+                        }
+                        const outIdx = (y * width + x) * 3;
                         pixels[outIdx + 0] = clampByte(Math.round(sumB / count));
                         pixels[outIdx + 1] = clampByte(Math.round(sumG / count));
                         pixels[outIdx + 2] = clampByte(Math.round(sumR / count));
@@ -218,9 +245,9 @@
                                 const nc = c + dc;
                                 if (nc < 0 || nc >= width) continue;
                                 const idx = (nr * width + nc) * 3;
-                                sumB += copy ? copy[idx + 0] : blurred[idx + 0];
-                                sumG += copy ? copy[idx + 1] : blurred[idx + 1];
-                                sumR += copy ? copy[idx + 2] : blurred[idx + 2];
+                                sumB += blurred[idx + 0];
+                                sumG += blurred[idx + 1];
+                                sumR += blurred[idx + 2];
                                 ++count;
                             }
                         }
