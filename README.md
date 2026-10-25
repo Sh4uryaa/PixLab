@@ -161,14 +161,6 @@ make wasm
 This generates `pixlab_wasm.js` and `pixlab_wasm.wasm` with optimized `-O3` performance.
 
 ---
-
-## 👥 Contributors
-
-- **Priyanshu Jena** ([@jenapriyanshu003](https://github.com/jenapriyanshu003) / `priyanshujena003@gmail.com`)
-- **Shaurya** ([@Sh4uryaa](https://github.com/Sh4uryaa))
-
----
-
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
