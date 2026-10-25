@@ -5,6 +5,7 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 main: "index.html",
+                studio: "web/index.html",
                 gallery: "gallery.html",
                 enhance: "enhance.html",
                 about: "about.html"

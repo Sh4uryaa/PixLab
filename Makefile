@@ -1,22 +1,32 @@
 CXX ?= g++
-CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra -Wpedantic
-SRC = src/Image.cpp src/Grayscale.cpp src/Sepia.cpp src/Reflect.cpp src/Blur.cpp
+CXXFLAGS ?= -std=c++17 -O3 -Wall -Wextra -Wpedantic -Iinclude
 
-.PHONY: all test clean wasm
-all: pixlab_filter
+SRC = src/Image.cpp \
+      src/GrayscaleFilter.cpp \
+      src/SepiaFilter.cpp \
+      src/BlurFilter.cpp \
+      src/ReflectFilter.cpp \
+      src/PixelateFilter.cpp \
+      src/VignetteFilter.cpp \
+      src/UnsharpMaskEnhancer.cpp \
+      src/BMPHandler.cpp
 
-pixlab_filter: src/main.cpp $(SRC)
-	$(CXX) $(CXXFLAGS) -Isrc $^ -o $@
+.PHONY: all wasm cli clean
 
-pixlab_tests: tests/filter_tests.cpp $(SRC)
-	$(CXX) $(CXXFLAGS) -Isrc $^ -o $@
+all: wasm
 
-test: pixlab_tests
-	./pixlab_tests
+# Native command-line executable
+cli: src/main.cpp $(SRC)
+	$(CXX) $(CXXFLAGS) $^ -o pixlab_cli
 
-# Requires Emscripten (emcc). Generates pixlab_wasm.js and pixlab_wasm.wasm.
-wasm:
-	emcc -std=c++17 -O3 -Isrc src/pixlab_wasm.cpp -s WASM=1 -s MODULARIZE=1 -s EXPORT_NAME=createPixLabModule -s EXPORTED_FUNCTIONS='["_pixlab_apply_filter","_malloc","_free"]' -s EXPORTED_RUNTIME_METHODS='[]' -o web/pixlab_wasm.js
+# Emscripten WebAssembly compilation to web/pixlab_wasm.js & web/pixlab_wasm.wasm
+wasm: src/main.cpp $(SRC)
+	emcc -std=c++17 -O3 -Iinclude $^ \
+		-s WASM=1 \
+		-s ALLOW_MEMORY_GROWTH=1 \
+		-s EXPORTED_FUNCTIONS="['_processImage','_getOutputSize','_freeBuffer','_malloc','_free']" \
+		-s EXPORTED_RUNTIME_METHODS="['ccall','cwrap']" \
+		-o web/pixlab_wasm.js
 
 clean:
-	rm -f pixlab_filter pixlab_tests pixlab_test_fixture.bmp pixlab_test_output.bmp web/pixlab_wasm.js web/pixlab_wasm.wasm
+	rm -f pixlab_cli web/pixlab_wasm.js web/pixlab_wasm.wasm

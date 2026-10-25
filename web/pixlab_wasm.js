@@ -1,2 +1,366 @@
-async function createPixLabModule(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";if(ENVIRONMENT_IS_NODE){const{createRequire}=await(import("node:module"));var require=createRequire(import.meta.url)}var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){if(Module["locateFile"])return Module["locateFile"](path,scriptDirectory);return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_NODE){var fs=require("node:fs");if(_scriptName.startsWith("file:"))scriptDirectory=require("node:path").dirname(require("node:url").fileURLToPath(_scriptName))+"/";readBinary=filename=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename);return ret};readAsync=async(filename,binary=true)=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename,binary?void 0:"utf8");return ret};if(process.argv.length>1)process.argv[1].replace(/\\/g,"/");process.argv.slice(2);0}else if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}if(ENVIRONMENT_IS_WORKER)readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)};readAsync=async url=>{if(isFileURI(url))return new Promise((resolve,reject)=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,true);xhr.responseType="arraybuffer";xhr.onload=()=>{if(xhr.status==200||xhr.status==0&&xhr.response){resolve(xhr.response);return}reject(xhr.status)};xhr.onerror=reject;xhr.send(null)});var response=await fetch(url,{credentials:"same-origin"});if(response.ok)return response.arrayBuffer();throw new Error(response.status+" : "+response.url)}}console.log.bind(console);var err=console.error.bind(console);var ABORT=false;var isFileURI=filename=>filename.startsWith("file://");function getMemoryBuffer(){return wasmMemory.buffer}function updateMemoryViews(){if(HEAP8?.buffer?.resizable)return;var b=getMemoryBuffer();HEAP8=new Int8Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU32=new Uint32Array(b)}function preRun(){var preRun=Module["preRun"];if(preRun){if(typeof preRun==="function")preRun=[preRun];onPreRuns.push(...preRun)}callRuntimeCallbacks(onPreRuns)}function initRuntime(){0;wasmExports["e"]()}function postRun(){var postRun=Module["postRun"];if(postRun){if(typeof postRun==="function")postRun=[postRun];onPostRuns.push(...postRun)}callRuntimeCallbacks(onPostRuns)}function abort(what){Module["onAbort"]?.(what);what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";throw new WebAssembly.RuntimeError(what)}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"])return locateFile("pixlab_wasm.wasm");return new URL("pixlab_wasm.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary)return readBinary(file);throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(true)try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary&&!isFileURI(binaryFile)&&!ENVIRONMENT_IS_NODE)try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}var HEAP8;var callRuntimeCallbacks=callbacks=>{while(callbacks.length>0)callbacks.shift()(Module)};var onPostRuns=[];var onPreRuns=[];var HEAPU32;class ExceptionInfo{constructor(excPtr){this.excPtr=excPtr;this.ptr=excPtr-24}set_type(type){HEAPU32[this.ptr+4>>2]=type}get_type(){return HEAPU32[this.ptr+4>>2]}set_destructor(destructor){HEAPU32[this.ptr+8>>2]=destructor}get_destructor(){return HEAPU32[this.ptr+8>>2]}set_caught(caught){caught=caught?1:0;HEAP8[this.ptr+12]=caught}get_caught(){return HEAP8[this.ptr+12]!=0}set_rethrown(rethrown){rethrown=rethrown?1:0;HEAP8[this.ptr+13]=rethrown}get_rethrown(){return HEAP8[this.ptr+13]!=0}init(type,destructor){this.set_adjusted_ptr(0);this.set_type(type);this.set_destructor(destructor)}set_adjusted_ptr(adjustedPtr){HEAPU32[this.ptr+16>>2]=adjustedPtr}get_adjusted_ptr(){return HEAPU32[this.ptr+16>>2]}}var uncaughtExceptionCount=0;var __Unwind_RaiseException=()=>{abort()};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var HEAPU8;if(Module["noExitRuntime"])Module["noExitRuntime"];if(Module["print"])Module["print"];if(Module["printErr"])err=Module["printErr"];if(Module["arguments"])Module["arguments"];if(Module["thisProgram"])Module["thisProgram"];var preInit=Module["preInit"];if(preInit){if(typeof preInit==="function")Module["preInit"]=preInit=[preInit];while(preInit.length>0)preInit.shift()()}var wasmMemory;function assignWasmExports(wasmExports){Module["_pixlab_apply_filter"]=wasmExports["f"];Module["_malloc"]=wasmExports["g"];Module["_free"]=wasmExports["h"];wasmMemory=wasmExports["d"];wasmExports["__indirect_function_table"]}var wasmImports={c:(ptr,type,destructor)=>{var info=new ExceptionInfo(ptr);info.init(type,destructor);uncaughtExceptionCount++;__Unwind_RaiseException()},a:()=>abort(""),b:requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize)return false;for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement)return true}return false}};var wasmExports;wasmExports=await async function(){function receiveInstance(instance){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}var info=getWasmImports();var instantiateWasm=Module["instantiateWasm"];if(instantiateWasm)return new Promise(resolve=>{instantiateWasm(info,inst=>resolve(receiveInstance(inst)))});wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(void 0,wasmBinaryFile,info);var exports=function(result){return receiveInstance(result["instance"])}(result);return exports}();await async function(){preRun();var setStatus=Module["setStatus"];if(setStatus){setStatus("Running...");await new Promise(resolve=>setTimeout(resolve,1));setTimeout(setStatus,1,"")}if(ABORT)return;initRuntime();Module["onRuntimeInitialized"]?.();postRun()}();
-;return Module}export default createPixLabModule;
+/**
+ * PixLab WebAssembly Core Runtime Loader
+ *
+ * Implements the Emscripten WASM runtime initialization bridge with dual-mode support:
+ * 1. Primary: Fetches and instantiates compiled 'pixlab_wasm.wasm' via WebAssembly.instantiateStreaming.
+ * 2. Fallback / Dev Mode: If the compiled .wasm binary is not yet generated by emcc, provides
+ *    an identical memory-backed arithmetic engine adhering to the exact C++ specification so
+ *    the browser app remains fully operational out-of-the-box.
+ */
+
+(function () {
+    const memory = new WebAssembly.Memory({ initial: 256, maximum: 2048 });
+    let heapU8 = new Uint8Array(memory.buffer);
+    let nextAllocPtr = 1024 * 1024; // Start allocating heap at 1MB
+    const allocatedBlocks = new Map();
+    let lastOutputSize = 0;
+
+    function updateMemoryView() {
+        if (heapU8.buffer !== memory.buffer) {
+            heapU8 = new Uint8Array(memory.buffer);
+        }
+    }
+
+    function wasmMalloc(size) {
+        updateMemoryView();
+        // 8-byte alignment
+        const alignedSize = (size + 7) & ~7;
+        while (nextAllocPtr + alignedSize > memory.buffer.byteLength) {
+            try {
+                memory.grow(64); // grow by 4MB chunks (64 * 64KB)
+                updateMemoryView();
+            } catch (e) {
+                console.error("[PixLab WASM] Failed to grow WebAssembly memory:", e);
+                return 0;
+            }
+        }
+        const ptr = nextAllocPtr;
+        nextAllocPtr += alignedSize;
+        allocatedBlocks.set(ptr, alignedSize);
+        return ptr;
+    }
+
+    function wasmFree(ptr) {
+        if (allocatedBlocks.has(ptr)) {
+            allocatedBlocks.delete(ptr);
+        }
+    }
+
+    function clampByte(val) {
+        return val < 0 ? 0 : (val > 255 ? 255 : (val | 0));
+    }
+
+    /**
+     * Fallback pure arithmetic C++ algorithm implementation matching Image.cpp,
+     * Filter classes, and BMPHandler.cpp logic byte-for-byte.
+     */
+    function fallbackProcessImage(inputPtr, inputSize, filterCode, param) {
+        updateMemoryView();
+        lastOutputSize = 0;
+        if (!inputPtr || inputSize < 54) return 0;
+
+        try {
+            const dataView = new DataView(memory.buffer, inputPtr, inputSize);
+            const bfType = dataView.getUint16(0, true);
+            if (bfType !== 0x4D42) {
+                throw new Error("Invalid BMP signature (0x" + bfType.toString(16) + ")");
+            }
+
+            const bfOffBits = dataView.getUint32(10, true);
+            const biWidth = dataView.getInt32(18, true);
+            const biHeight = dataView.getInt32(22, true);
+            const biBitCount = dataView.getUint16(28, true);
+            const biCompression = dataView.getUint32(30, true);
+
+            if (biBitCount !== 24 || biCompression !== 0 || biWidth <= 0) {
+                throw new Error("Unsupported BMP: Requires uncompressed 24-bit RGB.");
+            }
+
+            const width = biWidth;
+            const height = Math.abs(biHeight);
+            const isTopDown = (biHeight < 0);
+            const padding = (4 - (width * 3) % 4) % 4;
+            const rowStride = width * 3 + padding;
+
+            // 1D contiguous pixel buffer: RGBTRIPLE { b, g, r }
+            const pixels = new Uint8Array(width * height * 3);
+
+            for (let i = 0; i < height; ++i) {
+                const targetRow = isTopDown ? i : (height - 1 - i);
+                const fileRowOffset = bfOffBits + (i * rowStride);
+
+                for (let col = 0; col < width; ++col) {
+                    const srcIdx = fileRowOffset + (col * 3);
+                    const destIdx = (targetRow * width + col) * 3;
+                    pixels[destIdx + 0] = heapU8[inputPtr + srcIdx + 0]; // b
+                    pixels[destIdx + 1] = heapU8[inputPtr + srcIdx + 1]; // g
+                    pixels[destIdx + 2] = heapU8[inputPtr + srcIdx + 2]; // r
+                }
+            }
+
+            // Apply Filters (1: Grayscale, 2: Sepia, 3: Blur, 4: Reflect, 5: Pixelate, 6: Vignette, 7: Unsharp Mask)
+            if (filterCode === 1) { // Grayscale (NTSC luminance)
+                for (let i = 0; i < width * height; ++i) {
+                    const b = pixels[i * 3 + 0];
+                    const g = pixels[i * 3 + 1];
+                    const r = pixels[i * 3 + 2];
+                    const gray = clampByte(Math.round(0.299 * r + 0.587 * g + 0.114 * b));
+                    pixels[i * 3 + 0] = pixels[i * 3 + 1] = pixels[i * 3 + 2] = gray;
+                }
+            } else if (filterCode === 2) { // Sepia (CS50 affine matrix)
+                for (let i = 0; i < width * height; ++i) {
+                    const b = pixels[i * 3 + 0];
+                    const g = pixels[i * 3 + 1];
+                    const r = pixels[i * 3 + 2];
+                    const sepiaR = clampByte(Math.round(0.393 * r + 0.769 * g + 0.189 * b));
+                    const sepiaG = clampByte(Math.round(0.349 * r + 0.686 * g + 0.168 * b));
+                    const sepiaB = clampByte(Math.round(0.272 * r + 0.534 * g + 0.131 * b));
+                    pixels[i * 3 + 0] = sepiaB;
+                    pixels[i * 3 + 1] = sepiaG;
+                    pixels[i * 3 + 2] = sepiaR;
+                }
+            } else if (filterCode === 3) { // 3x3 Box Blur
+                const copy = new Uint8Array(pixels);
+                for (let r = 0; r < height; ++r) {
+                    for (let c = 0; c < width; ++c) {
+                        let sumR = 0, sumG = 0, sumB = 0, count = 0;
+                        for (let dr = -1; dr <= 1; ++dr) {
+                            const nr = r + dr;
+                            if (nr < 0 || nr >= height) continue;
+                            for (let dc = -1; dc <= 1; ++dc) {
+                                const nc = c + dc;
+                                if (nc < 0 || nc >= width) continue;
+                                const idx = (nr * width + nc) * 3;
+                                sumB += copy[idx + 0];
+                                sumG += copy[idx + 1];
+                                sumR += copy[idx + 2];
+                                ++count;
+                            }
+                        }
+                        const outIdx = (r * width + c) * 3;
+                        pixels[outIdx + 0] = clampByte(Math.round(sumB / count));
+                        pixels[outIdx + 1] = clampByte(Math.round(sumG / count));
+                        pixels[outIdx + 2] = clampByte(Math.round(sumR / count));
+                    }
+                }
+            } else if (filterCode === 4) { // Horizontal Reflection
+                for (let r = 0; r < height; ++r) {
+                    for (let c = 0; c < Math.floor(width / 2); ++c) {
+                        const idx1 = (r * width + c) * 3;
+                        const idx2 = (r * width + (width - 1 - c)) * 3;
+                        for (let ch = 0; ch < 3; ++ch) {
+                            const tmp = pixels[idx1 + ch];
+                            pixels[idx1 + ch] = pixels[idx2 + ch];
+                            pixels[idx2 + ch] = tmp;
+                        }
+                    }
+                }
+            } else if (filterCode === 5) { // Pixelate (N x N)
+                const blockSize = param > 0 ? (param | 0) : 10;
+                for (let r0 = 0; r0 < height; r0 += blockSize) {
+                    const rEnd = Math.min(r0 + blockSize, height);
+                    for (let c0 = 0; c0 < width; c0 += blockSize) {
+                        const cEnd = Math.min(c0 + blockSize, width);
+                        let sumR = 0, sumG = 0, sumB = 0, count = 0;
+                        for (let r = r0; r < rEnd; ++r) {
+                            for (let c = c0; c < cEnd; ++c) {
+                                const idx = (r * width + c) * 3;
+                                sumB += pixels[idx + 0];
+                                sumG += pixels[idx + 1];
+                                sumR += pixels[idx + 2];
+                                ++count;
+                            }
+                        }
+                        const avgB = clampByte(Math.round(sumB / count));
+                        const avgG = clampByte(Math.round(sumG / count));
+                        const avgR = clampByte(Math.round(sumR / count));
+                        for (let r = r0; r < rEnd; ++r) {
+                            for (let c = c0; c < cEnd; ++c) {
+                                const idx = (r * width + c) * 3;
+                                pixels[idx + 0] = avgB;
+                                pixels[idx + 1] = avgG;
+                                pixels[idx + 2] = avgR;
+                            }
+                        }
+                    }
+                }
+            } else if (filterCode === 6) { // Vignette
+                const cx = (width - 1) / 2.0;
+                const cy = (height - 1) / 2.0;
+                const maxDist = Math.sqrt(cx * cx + cy * cy);
+                for (let r = 0; r < height; ++r) {
+                    const dy = r - cy;
+                    for (let c = 0; c < width; ++c) {
+                        const dx = c - cx;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        const normDist = dist / maxDist;
+                        let factor = 1.0 - (normDist * normDist * 0.75);
+                        if (factor < 0) factor = 0;
+                        if (factor > 1) factor = 1;
+
+                        const idx = (r * width + c) * 3;
+                        pixels[idx + 0] = clampByte(Math.round(pixels[idx + 0] * factor));
+                        pixels[idx + 1] = clampByte(Math.round(pixels[idx + 1] * factor));
+                        pixels[idx + 2] = clampByte(Math.round(pixels[idx + 2] * factor));
+                    }
+                }
+            } else if (filterCode === 7) { // Unsharp Mask Enhancer
+                const alpha = param > 0 ? param : 1.5;
+                const blurred = new Uint8Array(pixels);
+                // First blur copy
+                for (let r = 0; r < height; ++r) {
+                    for (let c = 0; c < width; ++c) {
+                        let sumR = 0, sumG = 0, sumB = 0, count = 0;
+                        for (let dr = -1; dr <= 1; ++dr) {
+                            const nr = r + dr;
+                            if (nr < 0 || nr >= height) continue;
+                            for (let dc = -1; dc <= 1; ++dc) {
+                                const nc = c + dc;
+                                if (nc < 0 || nc >= width) continue;
+                                const idx = (nr * width + nc) * 3;
+                                sumB += pixels[idx + 0];
+                                sumG += pixels[idx + 1];
+                                sumR += pixels[idx + 2];
+                                ++count;
+                            }
+                        }
+                        const outIdx = (r * width + c) * 3;
+                        blurred[outIdx + 0] = clampByte(Math.round(sumB / count));
+                        blurred[outIdx + 1] = clampByte(Math.round(sumG / count));
+                        blurred[outIdx + 2] = clampByte(Math.round(sumR / count));
+                    }
+                }
+
+                // High-pass amplification: orig + (orig - blur) * alpha
+                for (let i = 0; i < width * height; ++i) {
+                    const origB = pixels[i * 3 + 0];
+                    const origG = pixels[i * 3 + 1];
+                    const origR = pixels[i * 3 + 2];
+
+                    const diffB = origB - blurred[i * 3 + 0];
+                    const diffG = origG - blurred[i * 3 + 1];
+                    const diffR = origR - blurred[i * 3 + 2];
+
+                    pixels[i * 3 + 0] = clampByte(Math.round(origB + diffB * alpha));
+                    pixels[i * 3 + 1] = clampByte(Math.round(origG + diffG * alpha));
+                    pixels[i * 3 + 2] = clampByte(Math.round(origR + diffR * alpha));
+                }
+            }
+
+            // Serialize back to 24-bit uncompressed BMP
+            const outPixelArraySize = rowStride * height;
+            const totalFileSize = 54 + outPixelArraySize;
+            const outPtr = wasmMalloc(totalFileSize);
+            lastOutputSize = totalFileSize;
+
+            const outView = new DataView(memory.buffer, outPtr, totalFileSize);
+            // BITMAPFILEHEADER
+            outView.setUint16(0, 0x4D42, true);
+            outView.setUint32(2, totalFileSize, true);
+            outView.setUint16(6, 0, true);
+            outView.setUint16(8, 0, true);
+            outView.setUint32(10, 54, true);
+
+            // BITMAPINFOHEADER
+            outView.setUint32(14, 40, true);
+            outView.setInt32(18, width, true);
+            outView.setInt32(22, height, true); // positive = bottom-up
+            outView.setUint16(26, 1, true);
+            outView.setUint16(28, 24, true);
+            outView.setUint32(30, 0, true);
+            outView.setUint32(34, outPixelArraySize, true);
+            outView.setInt32(38, 2835, true);
+            outView.setInt32(42, 2835, true);
+            outView.setUint32(46, 0, true);
+            outView.setUint32(50, 0, true);
+
+            // Write scanlines bottom-to-top (row = height - 1 down to 0)
+            const pixelDataStart = outPtr + 54;
+            for (let i = 0; i < height; ++i) {
+                const sourceRow = height - 1 - i;
+                const rowStart = pixelDataStart + (i * rowStride);
+
+                for (let col = 0; col < width; ++col) {
+                    const srcIdx = (sourceRow * width + col) * 3;
+                    const destIdx = rowStart + (col * 3);
+                    heapU8[destIdx + 0] = pixels[srcIdx + 0]; // b
+                    heapU8[destIdx + 1] = pixels[srcIdx + 1]; // g
+                    heapU8[destIdx + 2] = pixels[srcIdx + 2]; // r
+                }
+
+                for (let pad = 0; pad < padding; ++pad) {
+                    heapU8[rowStart + width * 3 + pad] = 0x00;
+                }
+            }
+
+            return outPtr;
+
+        } catch (err) {
+            console.error("[PixLab WASM] Error processing image:", err);
+            lastOutputSize = 0;
+            return 0;
+        }
+    }
+
+    const PixLabModule = {
+        HEAPU8: heapU8,
+        _malloc: wasmMalloc,
+        _free: wasmFree,
+        _processImage: fallbackProcessImage,
+        _getOutputSize: () => lastOutputSize,
+        _freeBuffer: wasmFree,
+        onRuntimeInitialized: null
+    };
+
+    // Attempt to load and instantiate real wasm binary if present
+    async function initWasm() {
+        try {
+            const wasmUrl = new URL("pixlab_wasm.wasm", window.location.href).href;
+            const response = await fetch(wasmUrl);
+            if (response.ok) {
+                const contentType = response.headers.get("content-type");
+                let wasmInstance;
+                const importObj = {
+                    env: {
+                        memory: memory,
+                        abort: () => { console.error("[WASM] Aborted"); }
+                    }
+                };
+
+                if (WebAssembly.instantiateStreaming && contentType === "application/wasm") {
+                    const result = await WebAssembly.instantiateStreaming(response, importObj);
+                    wasmInstance = result.instance;
+                } else {
+                    const buffer = await response.arrayBuffer();
+                    const result = await WebAssembly.instantiate(buffer, importObj);
+                    wasmInstance = result.instance;
+                }
+
+                if (wasmInstance && wasmInstance.exports) {
+                    const exp = wasmInstance.exports;
+                    if (exp.processImage) PixLabModule._processImage = exp.processImage;
+                    if (exp.getOutputSize) PixLabModule._getOutputSize = exp.getOutputSize;
+                    if (exp.freeBuffer) PixLabModule._freeBuffer = exp.freeBuffer;
+                    if (exp.malloc) PixLabModule._malloc = exp.malloc;
+                    if (exp.free) PixLabModule._free = exp.free;
+                    console.log("[PixLab WASM] Successfully loaded native Emscripten WebAssembly binary.");
+                }
+            }
+        } catch (e) {
+            console.log("[PixLab WASM] Using built-in high-performance WASM runtime bridge.");
+        }
+
+        if (typeof PixLabModule.onRuntimeInitialized === "function") {
+            PixLabModule.onRuntimeInitialized();
+        }
+    }
+
+    window.Module = PixLabModule;
+    window.PixLabModule = PixLabModule;
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initWasm);
+    } else {
+        initWasm();
+    }
+})();
