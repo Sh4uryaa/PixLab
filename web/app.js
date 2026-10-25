@@ -207,6 +207,126 @@ document.addEventListener("DOMContentLoaded", () => {
         return u8;
     }
 
+    // --- Convert Any Image (PNG, JPG, WebP, 32-bit BMP) to 24-bit uncompressed BMP in RAM ---
+    function convertFileTo24BitBmp(file) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const width = img.naturalWidth || img.width;
+                    const height = img.naturalHeight || img.height;
+                    if (!width || !height || width <= 0 || height <= 0) {
+                        throw new Error("Invalid image dimensions.");
+                    }
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const imgData = ctx.getImageData(0, 0, width, height);
+                    const rgba = imgData.data;
+
+                    const padding = (4 - (width * 3) % 4) % 4;
+                    const rowStride = width * 3 + padding;
+                    const pixelArraySize = rowStride * height;
+                    const totalSize = 54 + pixelArraySize;
+
+                    const buffer = new ArrayBuffer(totalSize);
+                    const view = new DataView(buffer);
+                    const u8 = new Uint8Array(buffer);
+
+                    // BITMAPFILEHEADER (14 bytes)
+                    view.setUint16(0, 0x4D42, true); // "BM"
+                    view.setUint32(2, totalSize, true);
+                    view.setUint16(6, 0, true);
+                    view.setUint16(8, 0, true);
+                    view.setUint32(10, 54, true);
+
+                    // BITMAPINFOHEADER (40 bytes)
+                    view.setUint32(14, 40, true);
+                    view.setInt32(18, width, true);
+                    view.setInt32(22, height, true); // standard bottom-up
+                    view.setUint16(26, 1, true);     // 1 plane
+                    view.setUint16(28, 24, true);    // 24-bit uncompressed RGB
+                    view.setUint32(30, 0, true);     // BI_RGB
+                    view.setUint32(34, pixelArraySize, true);
+                    view.setInt32(38, 2835, true);   // 72 DPI
+                    view.setInt32(42, 2835, true);
+                    view.setUint32(46, 0, true);
+                    view.setUint32(50, 0, true);
+
+                    // Write scanlines bottom-to-top (row = height - 1 down to 0) in BGR order
+                    for (let row = 0; row < height; ++row) {
+                        const sourceRow = height - 1 - row;
+                        const rowStart = 54 + (row * rowStride);
+
+                        for (let col = 0; col < width; ++col) {
+                            const srcIdx = (sourceRow * width + col) * 4;
+                            const destIdx = rowStart + (col * 3);
+                            u8[destIdx + 0] = rgba[srcIdx + 2]; // Blue
+                            u8[destIdx + 1] = rgba[srcIdx + 1]; // Green
+                            u8[destIdx + 2] = rgba[srcIdx + 0]; // Red
+                        }
+
+                        for (let p = 0; p < padding; ++p) {
+                            u8[rowStart + width * 3 + p] = 0x00;
+                        }
+                    }
+
+                    URL.revokeObjectURL(url);
+                    resolve(u8);
+                } catch (err) {
+                    URL.revokeObjectURL(url);
+                    reject(err);
+                }
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error("Unable to decode image. Please select a valid BMP, PNG, or JPG file."));
+            };
+            img.src = url;
+        });
+    }
+
+    // --- Master Handler for Uploaded / Dropped Files ---
+    async function handleUploadedFile(file) {
+        if (!file) return;
+
+        // Check if file is already a valid 24-bit uncompressed BMP
+        const isBmp = /\.bmp$/i.test(file.name) || file.type === "image/bmp" || file.type === "image/x-ms-bmp";
+
+        if (isBmp) {
+            try {
+                const buffer = await file.arrayBuffer();
+                const bytes = new Uint8Array(buffer);
+                const specs = parseBmpDimensions(bytes);
+                if (specs && specs.bpp === 24) {
+                    loadBmpData(bytes, file.name);
+                    return;
+                }
+            } catch (e) {
+                // If direct read fails, fall through to canvas decoder
+            }
+        }
+
+        // Automatic in-memory conversion to standard 24-bit BMP
+        try {
+            showToast(`Loading "${file.name}"...`, "info");
+            const bmpBytes = await convertFileTo24BitBmp(file);
+            const baseName = file.name.replace(/\.[^/.]+$/, "");
+            loadBmpData(bmpBytes, `${baseName}.bmp`);
+            showToast(`Converted "${file.name}" to 24-bit BMP for WASM engine.`, "success");
+        } catch (err) {
+            console.error("[PixLab] File upload error:", err);
+            showToast(err.message, "error");
+        } finally {
+            elements.fileInput.value = "";
+        }
+    }
+
     // --- Load BMP Bytes into Studio ---
     function loadBmpData(bytes, filename = "image.bmp") {
         const specs = parseBmpDimensions(bytes);
@@ -419,46 +539,66 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // --- File Input & Drag and Drop Handlers ---
-    elements.btnBrowseFile.addEventListener("click", () => {
+    // Clicking anywhere on the drop zone card opens the file dialog
+    elements.dropZone.addEventListener("click", () => {
+        elements.fileInput.click();
+    });
+
+    // Keyboard accessibility: Enter or Space triggers file dialog
+    elements.dropZone.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            elements.fileInput.click();
+        }
+    });
+
+    elements.btnBrowseFile.addEventListener("click", (e) => {
+        e.stopPropagation(); // Avoid triggering dropZone click twice
         elements.fileInput.click();
     });
 
     elements.fileInput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const bytes = new Uint8Array(evt.target.result);
-            loadBmpData(bytes, file.name);
-        };
-        reader.onerror = () => showToast("Failed to read file.", "error");
-        reader.readAsArrayBuffer(file);
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+            handleUploadedFile(file);
+        }
     });
 
-    // Drop zone drag events
+    // Prevent default browser behavior on accidental window drop (navigating to file)
+    window.addEventListener("dragover", (e) => e.preventDefault());
+    window.addEventListener("drop", (e) => e.preventDefault());
+
+    // Drop zone drag events with dragCounter to prevent child flickering
+    let dragCounter = 0;
+
+    elements.dropZone.addEventListener("dragenter", (e) => {
+        e.preventDefault();
+        dragCounter++;
+        elements.dropZone.classList.add("drag-active");
+    });
+
     elements.dropZone.addEventListener("dragover", (e) => {
         e.preventDefault();
         elements.dropZone.classList.add("drag-active");
     });
 
-    elements.dropZone.addEventListener("dragleave", () => {
-        elements.dropZone.classList.remove("drag-active");
+    elements.dropZone.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0) {
+            dragCounter = 0;
+            elements.dropZone.classList.remove("drag-active");
+        }
     });
 
     elements.dropZone.addEventListener("drop", (e) => {
         e.preventDefault();
+        dragCounter = 0;
         elements.dropZone.classList.remove("drag-active");
-        const file = e.dataTransfer.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const bytes = new Uint8Array(evt.target.result);
-            loadBmpData(bytes, file.name);
-        };
-        reader.onerror = () => showToast("Failed to read dropped file.", "error");
-        reader.readAsArrayBuffer(file);
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            handleUploadedFile(files[0]);
+        }
     });
 
     // Sample BMP buttons

@@ -63,11 +63,11 @@
                 <section class="control-card">
                     <div class="card-header">
                         <span class="step-num">1</span>
-                        <h2>Image Source (24-bit BMP)</h2>
+                        <h2>Image Source (BMP, PNG, JPG)</h2>
                     </div>
 
-                    <div class="drop-zone" id="dropZone">
-                        <input type="file" id="fileInput" accept=".bmp" class="file-input-hidden" aria-label="Upload BMP Image">
+                    <div class="drop-zone" id="dropZone" tabindex="0" role="button" aria-label="Upload or drop image">
+                        <input type="file" id="fileInput" accept=".bmp,.png,.jpg,.jpeg,.webp,image/*" class="file-input-hidden" aria-label="Upload Image">
                         <div class="drop-zone-content">
                             <div class="upload-icon">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="36" height="36">
@@ -76,8 +76,8 @@
                                     <line x1="12" y1="3" x2="12" y2="15"></line>
                                 </svg>
                             </div>
-                            <p class="drop-text">Drag & drop <strong>.BMP</strong> image</p>
-                            <p class="drop-subtext">Standard uncompressed 24-bit RGB</p>
+                            <p class="drop-text">Drag & drop or <strong>click to upload</strong></p>
+                            <p class="drop-subtext">BMP, PNG, JPG &bull; 24-bit WASM Engine</p>
                             <button type="button" class="btn-secondary btn-sm" id="btnBrowseFile">
                                 Browse File
                             </button>
