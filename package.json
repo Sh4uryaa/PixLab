@@ -20,10 +20,10 @@
   },
   "license": "MIT",
   "author": "Shaurya Mishra",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node tests/node_filter_tests.js",
     "dev": "vite",
     "build": "vite build"
   },

@@ -37,7 +37,7 @@ Image BMPHandler::deserialize(const uint8_t* data, size_t size) {
     int height = std::abs(infoHeader.biHeight);
     bool isTopDown = (infoHeader.biHeight < 0);
 
-    if (width <= 0 || height <= 0) {
+    if (width <= 0 || height <= 0 || width > 32768 || height > 32768) {
         throw std::runtime_error("Invalid image dimensions in BMP header.");
     }
 
@@ -52,19 +52,14 @@ Image BMPHandler::deserialize(const uint8_t* data, size_t size) {
 
     Image img(width, height);
     const uint8_t* pixelData = data + fileHeader.bfOffBits;
+    const size_t rowBytes = static_cast<size_t>(width) * sizeof(RGBTRIPLE);
 
+    // High-performance block memory copy per scanline (replaces pixel-by-pixel assignments)
     for (int i = 0; i < height; ++i) {
         // Standard BMP (positive height) is stored bottom-up; negative is top-down
         int targetRow = isTopDown ? i : (height - 1 - i);
         const uint8_t* rowPtr = pixelData + (i * rowStride);
-
-        for (int col = 0; col < width; ++col) {
-            RGBTRIPLE& p = img.at(targetRow, col);
-            // BMP 24-bit stores in BGR order: Blue, Green, Red
-            p.b = rowPtr[col * 3 + 0];
-            p.g = rowPtr[col * 3 + 1];
-            p.r = rowPtr[col * 3 + 2];
-        }
+        std::memcpy(img.row(targetRow), rowPtr, rowBytes);
     }
 
     return img;
@@ -106,22 +101,15 @@ std::vector<uint8_t> BMPHandler::serialize(const Image& img) {
     std::memcpy(buffer.data() + sizeof(BITMAPFILEHEADER), &infoHeader, sizeof(BITMAPINFOHEADER));
 
     uint8_t* pixelData = buffer.data() + fileHeader.bfOffBits;
+    const size_t rowBytes = static_cast<size_t>(width) * sizeof(RGBTRIPLE);
 
-    // Write scanlines bottom-to-top (row = height - 1 down to 0)
+    // Write scanlines bottom-to-top using fast SIMD-friendly memcpy
     for (int i = 0; i < height; ++i) {
         int sourceRow = height - 1 - i;
         uint8_t* rowPtr = pixelData + (i * rowStride);
-
-        for (int col = 0; col < width; ++col) {
-            const RGBTRIPLE& p = img.at(sourceRow, col);
-            rowPtr[col * 3 + 0] = p.b;
-            rowPtr[col * 3 + 1] = p.g;
-            rowPtr[col * 3 + 2] = p.r;
-        }
-
-        // Fill scanline padding bytes with 0x00
-        for (int pad = 0; pad < padding; ++pad) {
-            rowPtr[width * 3 + pad] = 0x00;
+        std::memcpy(rowPtr, img.row(sourceRow), rowBytes);
+        if (padding > 0) {
+            std::memset(rowPtr + rowBytes, 0, padding);
         }
     }
 

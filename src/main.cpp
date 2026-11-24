@@ -32,8 +32,8 @@ extern "C" {
 PIXLAB_EXPORT uint8_t* processImage(const uint8_t* inputBuffer, size_t inputSize, int filterCode, float param) {
     g_lastOutputSize = 0;
 
-    if (!inputBuffer || inputSize == 0) {
-        std::cerr << "[PixLab WASM] Error: Empty input buffer.\n";
+    if (!inputBuffer || inputSize < 54) {
+        std::cerr << "[PixLab WASM] Error: Empty or invalid input buffer (minimum 54 bytes for BMP header).\n";
         return nullptr;
     }
 

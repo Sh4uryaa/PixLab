@@ -31,10 +31,31 @@ public:
     // Dimensional accessors
     int getWidth() const noexcept { return m_width; }
     int getHeight() const noexcept { return m_height; }
+    std::size_t getPixelCount() const noexcept { return m_pixels.size(); }
 
     // Bounds-checked 2D coordinate access (row, col)
     RGBTRIPLE& at(int row, int col);
     const RGBTRIPLE& at(int row, int col) const;
+
+    // Fast inlined unchecked 2D coordinate access (row, col)
+    inline RGBTRIPLE& operator()(int row, int col) noexcept {
+        return m_pixels[static_cast<std::size_t>(row) * m_width + col];
+    }
+    inline const RGBTRIPLE& operator()(int row, int col) const noexcept {
+        return m_pixels[static_cast<std::size_t>(row) * m_width + col];
+    }
+
+    // Direct row pointer access for cache-friendly scanline operations
+    inline RGBTRIPLE* row(int r) noexcept {
+        return &m_pixels[static_cast<std::size_t>(r) * m_width];
+    }
+    inline const RGBTRIPLE* row(int r) const noexcept {
+        return &m_pixels[static_cast<std::size_t>(r) * m_width];
+    }
+
+    // Direct pointer access to contiguous pixel buffer
+    RGBTRIPLE* data() noexcept { return m_pixels.data(); }
+    const RGBTRIPLE* data() const noexcept { return m_pixels.data(); }
 
     // Direct access to contiguous pixel buffer
     std::vector<RGBTRIPLE>& getPixels() noexcept { return m_pixels; }

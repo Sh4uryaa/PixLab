@@ -29,7 +29,12 @@ int main() {
         threw = true;
     }
     assert(threw);
-    std::cout << "  ✓ Image bounds checking passed.\n";
+
+    // Test fast unchecked accessor and row pointer
+    img(0, 0) = {11, 22, 33};
+    assert(img.row(0)[0].b == 11 && img.row(0)[0].g == 22 && img.row(0)[0].r == 33);
+    assert(img.at(0, 0).b == 11 && img.at(0, 0).g == 22 && img.at(0, 0).r == 33);
+    std::cout << "  ✓ Image bounds checking and fast row access passed.\n";
 
     // 2. Test BMP Serialization and Deserialization Round-trip
     img.at(0, 0) = {255, 0, 0};   // Blue

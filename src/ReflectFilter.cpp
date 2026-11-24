@@ -4,10 +4,12 @@
 void ReflectFilter::apply(Image& img) {
     const int width = img.getWidth();
     const int height = img.getHeight();
+    const int halfWidth = width / 2;
 
     for (int row = 0; row < height; ++row) {
-        for (int col = 0; col < width / 2; ++col) {
-            std::swap(img.at(row, col), img.at(row, width - 1 - col));
+        RGBTRIPLE* rowPtr = img.row(row);
+        for (int col = 0; col < halfWidth; ++col) {
+            std::swap(rowPtr[col], rowPtr[width - 1 - col]);
         }
     }
 }

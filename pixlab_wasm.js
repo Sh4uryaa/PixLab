@@ -90,41 +90,42 @@
             const rowStride = width * 3 + padding;
 
             // 1D contiguous pixel buffer: RGBTRIPLE { b, g, r }
-            const pixels = new Uint8Array(width * height * 3);
+            const rowBytes = width * 3;
+            const pixels = new Uint8Array(rowBytes * height);
 
+            // Fast bulk scanline copy (replaces byte-by-byte assignments)
             for (let i = 0; i < height; ++i) {
                 const targetRow = isTopDown ? i : (height - 1 - i);
                 const fileRowOffset = bfOffBits + (i * rowStride);
-
-                for (let col = 0; col < width; ++col) {
-                    const srcIdx = fileRowOffset + (col * 3);
-                    const destIdx = (targetRow * width + col) * 3;
-                    pixels[destIdx + 0] = heapU8[inputPtr + srcIdx + 0]; // b
-                    pixels[destIdx + 1] = heapU8[inputPtr + srcIdx + 1]; // g
-                    pixels[destIdx + 2] = heapU8[inputPtr + srcIdx + 2]; // r
-                }
+                const srcStart = inputPtr + fileRowOffset;
+                const destStart = targetRow * rowBytes;
+                pixels.set(heapU8.subarray(srcStart, srcStart + rowBytes), destStart);
             }
 
             // Apply Filters (1: Grayscale, 2: Sepia, 3: Blur, 4: Reflect, 5: Pixelate, 6: Vignette, 7: Unsharp Mask)
-            if (filterCode === 1) { // Grayscale (NTSC luminance)
-                for (let i = 0; i < width * height; ++i) {
-                    const b = pixels[i * 3 + 0];
-                    const g = pixels[i * 3 + 1];
-                    const r = pixels[i * 3 + 2];
-                    const gray = clampByte(Math.round(0.299 * r + 0.587 * g + 0.114 * b));
-                    pixels[i * 3 + 0] = pixels[i * 3 + 1] = pixels[i * 3 + 2] = gray;
+            if (filterCode === 1) { // Grayscale (Rec. 601 16-bit fixed point)
+                const total = width * height;
+                for (let i = 0; i < total; ++i) {
+                    const idx = i * 3;
+                    const b = pixels[idx + 0];
+                    const g = pixels[idx + 1];
+                    const r = pixels[idx + 2];
+                    const gray = (19595 * r + 38470 * g + 7471 * b + 32768) >> 16;
+                    pixels[idx + 0] = pixels[idx + 1] = pixels[idx + 2] = gray;
                 }
-            } else if (filterCode === 2) { // Sepia (CS50 affine matrix)
-                for (let i = 0; i < width * height; ++i) {
-                    const b = pixels[i * 3 + 0];
-                    const g = pixels[i * 3 + 1];
-                    const r = pixels[i * 3 + 2];
-                    const sepiaR = clampByte(Math.round(0.393 * r + 0.769 * g + 0.189 * b));
-                    const sepiaG = clampByte(Math.round(0.349 * r + 0.686 * g + 0.168 * b));
-                    const sepiaB = clampByte(Math.round(0.272 * r + 0.534 * g + 0.131 * b));
-                    pixels[i * 3 + 0] = sepiaB;
-                    pixels[i * 3 + 1] = sepiaG;
-                    pixels[i * 3 + 2] = sepiaR;
+            } else if (filterCode === 2) { // Sepia (16-bit fixed point)
+                const total = width * height;
+                for (let i = 0; i < total; ++i) {
+                    const idx = i * 3;
+                    const b = pixels[idx + 0];
+                    const g = pixels[idx + 1];
+                    const r = pixels[idx + 2];
+                    const sepiaR = (25756 * r + 50397 * g + 12386 * b + 32768) >> 16;
+                    const sepiaG = (22872 * r + 44958 * g + 11010 * b + 32768) >> 16;
+                    const sepiaB = (17826 * r + 34996 * g + 8585 * b + 32768) >> 16;
+                    pixels[idx + 0] = sepiaB > 255 ? 255 : sepiaB;
+                    pixels[idx + 1] = sepiaG > 255 ? 255 : sepiaG;
+                    pixels[idx + 2] = sepiaR > 255 ? 255 : sepiaR;
                 }
             } else if (filterCode === 3) { // Blur (Separable Box Blur with noticeable radius)
                 const radius = Math.max(3, Math.min(20, Math.floor(Math.min(width, height) / 60)));
@@ -211,24 +212,26 @@
                         }
                     }
                 }
-            } else if (filterCode === 6) { // Vignette
+            } else if (filterCode === 6) { // Vignette (without Math.sqrt)
                 const cx = (width - 1) / 2.0;
                 const cy = (height - 1) / 2.0;
-                const maxDist = Math.sqrt(cx * cx + cy * cy);
-                for (let r = 0; r < height; ++r) {
-                    const dy = r - cy;
-                    for (let c = 0; c < width; ++c) {
-                        const dx = c - cx;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        const normDist = dist / maxDist;
-                        let factor = 1.0 - (normDist * normDist * 0.75);
-                        if (factor < 0) factor = 0;
-                        if (factor > 1) factor = 1;
-
-                        const idx = (r * width + c) * 3;
-                        pixels[idx + 0] = clampByte(Math.round(pixels[idx + 0] * factor));
-                        pixels[idx + 1] = clampByte(Math.round(pixels[idx + 1] * factor));
-                        pixels[idx + 2] = clampByte(Math.round(pixels[idx + 2] * factor));
+                const maxDistSq = cx * cx + cy * cy;
+                if (maxDistSq > 1e-10) {
+                    const invMaxDistSq = 0.75 / maxDistSq;
+                    for (let r = 0; r < height; ++r) {
+                        const dy = r - cy;
+                        const dySq = dy * dy;
+                        const rowStart = r * width * 3;
+                        for (let c = 0; c < width; ++c) {
+                            const dx = c - cx;
+                            const distSq = dx * dx + dySq;
+                            let factor = 1.0 - (distSq * invMaxDistSq);
+                            if (factor < 0) factor = 0;
+                            const idx = rowStart + c * 3;
+                            pixels[idx + 0] = (pixels[idx + 0] * factor + 0.5) | 0;
+                            pixels[idx + 1] = (pixels[idx + 1] * factor + 0.5) | 0;
+                            pixels[idx + 2] = (pixels[idx + 2] * factor + 0.5) | 0;
+                        }
                     }
                 }
             } else if (filterCode === 7) { // Multi-Stage Unsharp Mask & Clarity Enhancer
@@ -396,22 +399,15 @@
             outView.setUint32(46, 0, true);
             outView.setUint32(50, 0, true);
 
-            // Write scanlines bottom-to-top (row = height - 1 down to 0)
+            // Write scanlines bottom-to-top using fast bulk subarray copies
             const pixelDataStart = outPtr + 54;
             for (let i = 0; i < height; ++i) {
                 const sourceRow = height - 1 - i;
                 const rowStart = pixelDataStart + (i * rowStride);
-
-                for (let col = 0; col < width; ++col) {
-                    const srcIdx = (sourceRow * width + col) * 3;
-                    const destIdx = rowStart + (col * 3);
-                    heapU8[destIdx + 0] = pixels[srcIdx + 0]; // b
-                    heapU8[destIdx + 1] = pixels[srcIdx + 1]; // g
-                    heapU8[destIdx + 2] = pixels[srcIdx + 2]; // r
-                }
-
-                for (let pad = 0; pad < padding; ++pad) {
-                    heapU8[rowStart + width * 3 + pad] = 0x00;
+                const srcStart = sourceRow * rowBytes;
+                heapU8.set(pixels.subarray(srcStart, srcStart + rowBytes), rowStart);
+                if (padding > 0) {
+                    heapU8.fill(0, rowStart + rowBytes, rowStart + rowStride);
                 }
             }
 
@@ -437,35 +433,37 @@
     // Attempt to load and instantiate real wasm binary if present
     async function initWasm() {
         try {
-            const wasmUrl = new URL("pixlab_wasm.wasm", window.location.href).href;
-            const response = await fetch(wasmUrl);
-            if (response.ok) {
-                const contentType = response.headers.get("content-type");
-                let wasmInstance;
-                const importObj = {
-                    env: {
-                        memory: memory,
-                        abort: () => { console.error("[WASM] Aborted"); }
+            if (typeof window !== "undefined" && window.location) {
+                const wasmUrl = new URL("pixlab_wasm.wasm", window.location.href).href;
+                const response = await fetch(wasmUrl);
+                if (response.ok) {
+                    const contentType = response.headers.get("content-type");
+                    let wasmInstance;
+                    const importObj = {
+                        env: {
+                            memory: memory,
+                            abort: () => { console.error("[WASM] Aborted"); }
+                        }
+                    };
+
+                    if (WebAssembly.instantiateStreaming && contentType === "application/wasm") {
+                        const result = await WebAssembly.instantiateStreaming(response, importObj);
+                        wasmInstance = result.instance;
+                    } else {
+                        const buffer = await response.arrayBuffer();
+                        const result = await WebAssembly.instantiate(buffer, importObj);
+                        wasmInstance = result.instance;
                     }
-                };
 
-                if (WebAssembly.instantiateStreaming && contentType === "application/wasm") {
-                    const result = await WebAssembly.instantiateStreaming(response, importObj);
-                    wasmInstance = result.instance;
-                } else {
-                    const buffer = await response.arrayBuffer();
-                    const result = await WebAssembly.instantiate(buffer, importObj);
-                    wasmInstance = result.instance;
-                }
-
-                if (wasmInstance && wasmInstance.exports) {
-                    const exp = wasmInstance.exports;
-                    if (exp.processImage) PixLabModule._processImage = exp.processImage;
-                    if (exp.getOutputSize) PixLabModule._getOutputSize = exp.getOutputSize;
-                    if (exp.freeBuffer) PixLabModule._freeBuffer = exp.freeBuffer;
-                    if (exp.malloc) PixLabModule._malloc = exp.malloc;
-                    if (exp.free) PixLabModule._free = exp.free;
-                    console.log("[PixLab WASM] Successfully loaded native Emscripten WebAssembly binary.");
+                    if (wasmInstance && wasmInstance.exports) {
+                        const exp = wasmInstance.exports;
+                        if (exp.processImage) PixLabModule._processImage = exp.processImage;
+                        if (exp.getOutputSize) PixLabModule._getOutputSize = exp.getOutputSize;
+                        if (exp.freeBuffer) PixLabModule._freeBuffer = exp.freeBuffer;
+                        if (exp.malloc) PixLabModule._malloc = exp.malloc;
+                        if (exp.free) PixLabModule._free = exp.free;
+                        console.log("[PixLab WASM] Successfully loaded native Emscripten WebAssembly binary.");
+                    }
                 }
             }
         } catch (e) {
@@ -477,11 +475,20 @@
         }
     }
 
-    window.Module = PixLabModule;
-    window.PixLabModule = PixLabModule;
+    // Universal environment binding (Browser window, Web Worker self, Node.js globalThis)
+    const rootObj = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : (typeof global !== "undefined" ? global : this));
+    rootObj.Module = PixLabModule;
+    rootObj.PixLabModule = PixLabModule;
+    if (typeof module !== "undefined" && module.exports) {
+        module.exports = PixLabModule;
+    }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initWasm);
+    if (typeof document !== "undefined") {
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initWasm);
+        } else {
+            initWasm();
+        }
     } else {
         initWasm();
     }

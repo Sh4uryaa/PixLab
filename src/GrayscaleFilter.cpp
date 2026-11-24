@@ -1,19 +1,20 @@
 #include "GrayscaleFilter.h"
-#include <cmath>
 
 void GrayscaleFilter::apply(Image& img) {
-    const int width = img.getWidth();
-    const int height = img.getHeight();
+    RGBTRIPLE* data = img.data();
+    const std::size_t totalPixels = img.getPixelCount();
 
-    for (int row = 0; row < height; ++row) {
-        for (int col = 0; col < width; ++col) {
-            RGBTRIPLE& p = img.at(row, col);
-            int gray = clamp(static_cast<int>(std::round(
-                0.299 * p.r + 0.587 * p.g + 0.114 * p.b
-            )));
-            p.r = static_cast<uint8_t>(gray);
-            p.g = static_cast<uint8_t>(gray);
-            p.b = static_cast<uint8_t>(gray);
-        }
+    // High-performance Rec. 601 luminance using 16-bit fixed-point arithmetic:
+    // 0.299 * 65536 = 19595, 0.587 * 65536 = 38470, 0.114 * 65536 = 7471
+    // Sum = 65536 (2^16). Rounding bias = 32768 (2^15).
+    // Vectorizable linear loop with zero floating-point conversions or function calls.
+    for (std::size_t i = 0; i < totalPixels; ++i) {
+        const int r = data[i].r;
+        const int g = data[i].g;
+        const int b = data[i].b;
+        const uint8_t gray = static_cast<uint8_t>((19595 * r + 38470 * g + 7471 * b + 32768) >> 16);
+        data[i].r = gray;
+        data[i].g = gray;
+        data[i].b = gray;
     }
 }
