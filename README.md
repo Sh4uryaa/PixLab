@@ -1,6 +1,5 @@
 # PixLab
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B)](https://en.cppreference.com/w/cpp/17)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-WASM-654FF0?logo=webassembly)](https://webassembly.org/)
 [![Vite](https://img.shields.io/badge/Vite-8.3-646CFF?logo=vite)](https://vitejs.dev/)
@@ -83,56 +82,6 @@ The architecture combines clean object-oriented design patterns with low-level a
 | **5** | **Pixelate** | $B \times B$ spatial block averaging with integer division | $O(N)$ | Block size (default: 10px) |
 | **6** | **Vignette** | Quadratic falloff: $1.0 - (dx^2 + dy^2) \cdot \frac{0.75}{\text{maxDist}^2}$ | $O(N)$ | None |
 | **7** | **Enhance (Unsharp Mask)** | Adaptive separable spatial blur base + High-pass difference amplification + S-curve midtone contrast LUT + Rec. 601 vibrance lift | $O(N)$ | Intensity % ($10\% - 100\%$) |
-
----
-
-## Directory Structure
-
-```text
-PixLab/
-├── include/                  # C++17 Header Files
-│   ├── BMPHandler.h          # 24-bit uncompressed BMP binary parser & serializer
-│   ├── BlurFilter.h          # Multi-pass box blur filter specification
-│   ├── Filter.h              # Abstract base class for polymorphic filters
-│   ├── FilterFactory.h       # Polymorphic factory matching filter IDs to instances
-│   ├── GrayscaleFilter.h     # Rec. 601 luminance filter specification
-│   ├── Image.h               # Encapsulated 24-bit contiguous image buffer
-│   ├── PixelateFilter.h      # Block averaging filter specification
-│   ├── ReflectFilter.h       # Horizontal reflection filter specification
-│   ├── SepiaFilter.h         # Vintage affine matrix filter specification
-│   ├── UnsharpMaskEnhancer.h # Multi-stage high-pass clarity enhancer specification
-│   └── VignetteFilter.h      # Radial darkening falloff filter specification
-├── src/                      # C++17 Implementations & Entry Points
-│   ├── BMPHandler.cpp
-│   ├── BlurFilter.cpp
-│   ├── GrayscaleFilter.cpp
-│   ├── Image.cpp
-│   ├── PixelateFilter.cpp
-│   ├── ReflectFilter.cpp
-│   ├── SepiaFilter.cpp
-│   ├── UnsharpMaskEnhancer.cpp
-│   ├── VignetteFilter.cpp
-│   └── main.cpp              # C++ WASM export bindings (_processImage, _freeBuffer)
-├── tests/                    # Test Suites
-│   ├── filter_tests.cpp      # Native C++ unit tests
-│   └── node_filter_tests.js  # Automated Node.js WASM benchmark & regression suite
-├── public/                   # Static Production Assets
-│   ├── pixlab_wasm.js        # Universal WASM runtime bridge
-│   ├── pixlab_wasm.wasm      # Precompiled WebAssembly binary
-│   └── script.js             # Client-side UI execution script
-├── images/                   # UI Assets, Favicons & Sample Photography
-├── index.html                # Filters page (Primary UI with split comparison slider)
-├── enhance.html              # Photography enhancement page with intensity controls
-├── gallery.html              # Community & user gallery
-├── about.html                # Project background and documentation
-├── style.css                 # Responsive stylesheet & animations
-├── auth.js                   # Firebase authentication logic
-├── firebase.js               # Firebase configuration & initialization
-├── package.json              # ESM project dependencies and test scripts
-├── vite.config.js            # Vite multi-page build configuration
-├── CMakeLists.txt            # CMake configuration for native CLI & WASM targets
-└── Makefile                  # GCC / Clang / Emscripten build rules
-```
 
 ---
 
@@ -235,9 +184,3 @@ The automated test harness ([tests/node_filter_tests.js](tests/node_filter_tests
 * [ ] **Web Workers:** Offload image processing to dedicated Background Web Workers to eliminate any main-thread UI blocking on ultra-large (30MP+) RAW images.
 * [ ] **Extended Filter Library:** Add Sobel edge detection, Laplacian high-pass, Bilateral edge-preserving smoothing, and custom convolution matrix inputs.
 * [ ] **Cloud Gallery Sync:** Direct Cloud Firestore integration for user gallery persistence.
-
----
-
-## License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
