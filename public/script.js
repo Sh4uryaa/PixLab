@@ -10,7 +10,7 @@
  * - Multi-format export: Download in PNG, JPG, or BMP
  */
 
-document.addEventListener("DOMContentLoaded", () => {
+function initPixLabApp() {
     // -------------------------------------------------------------
     // 1. Comparison Sliders Setup (Used on Filters & Enhance pages)
     // -------------------------------------------------------------
@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.drawImage(img, 0, 0, width, height);
 
         const imgData = ctx.getImageData(0, 0, width, height);
-        const rgba = imgData.data;
+        const rgba32 = new Uint32Array(imgData.data.buffer);
 
         const padding = (4 - (width * 3) % 4) % 4;
         const rowStride = width * 3 + padding;
@@ -135,28 +135,25 @@ document.addEventListener("DOMContentLoaded", () => {
         view.setUint32(46, 0, true);
         view.setUint32(50, 0, true);
 
-        // Write scanlines bottom-to-top (row = height - 1 down to 0) in BGR order
+        // Write scanlines bottom-to-top using fast 32-bit pixel unpack
         for (let row = 0; row < height; ++row) {
             const sourceRow = height - 1 - row;
-            const rowStart = 54 + (row * rowStride);
+            const srcRowOffset = sourceRow * width;
+            let destIdx = 54 + (row * rowStride);
 
             for (let col = 0; col < width; ++col) {
-                const srcIdx = (sourceRow * width + col) * 4;
-                const destIdx = rowStart + (col * 3);
-                u8[destIdx + 0] = rgba[srcIdx + 2]; // Blue
-                u8[destIdx + 1] = rgba[srcIdx + 1]; // Green
-                u8[destIdx + 2] = rgba[srcIdx + 0]; // Red
-            }
-
-            for (let p = 0; p < padding; ++p) {
-                u8[rowStart + width * 3 + p] = 0x00;
+                const px = rgba32[srcRowOffset + col];
+                u8[destIdx + 0] = (px >> 16) & 0xFF; // Blue
+                u8[destIdx + 1] = (px >> 8) & 0xFF;  // Green
+                u8[destIdx + 2] = px & 0xFF;         // Red
+                destIdx += 3;
             }
         }
 
         return u8;
     }
 
-    // Convert raw 24-bit BMP binary into browser ImageData
+    // Convert raw 24-bit BMP binary into browser ImageData using fast 32-bit packed writes
     function bmpToImageData(bmpBytes, ctx) {
         if (!bmpBytes || bmpBytes.length < 54) return null;
         const view = new DataView(bmpBytes.buffer, bmpBytes.byteOffset, bmpBytes.byteLength);
@@ -174,19 +171,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const padding = (4 - (width * 3) % 4) % 4;
         const rowStride = width * 3 + padding;
         const imgData = ctx.createImageData(width, height);
-        const rgba = imgData.data;
+        const rgba32 = new Uint32Array(imgData.data.buffer);
 
         for (let row = 0; row < height; ++row) {
             const destRow = isBottomUp ? (height - 1 - row) : row;
-            const rowStart = pixelOffset + (row * rowStride);
+            const destRowOffset = destRow * width;
+            let srcIdx = pixelOffset + (row * rowStride);
 
             for (let col = 0; col < width; ++col) {
-                const srcIdx = rowStart + (col * 3);
-                const destIdx = (destRow * width + col) * 4;
-                rgba[destIdx + 0] = bmpBytes[srcIdx + 2]; // Red
-                rgba[destIdx + 1] = bmpBytes[srcIdx + 1]; // Green
-                rgba[destIdx + 2] = bmpBytes[srcIdx + 0]; // Blue
-                rgba[destIdx + 3] = 255;                  // Alpha
+                const b = bmpBytes[srcIdx + 0];
+                const g = bmpBytes[srcIdx + 1];
+                const r = bmpBytes[srcIdx + 2];
+                rgba32[destRowOffset + col] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                srcIdx += 3;
             }
         }
 
@@ -564,4 +561,10 @@ document.addEventListener("DOMContentLoaded", () => {
             applyEnhancementBtn.disabled = false;
         });
     }
-});
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initPixLabApp);
+} else {
+    initPixLabApp();
+}
