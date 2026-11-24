@@ -156,21 +156,3 @@ void UnsharpMaskEnhancer::apply(Image& img) {
     applyToneAndVibrance(img, m_contrast, m_vibrance);
 }
 
-void UnsharpMaskEnhancer::apply(Image& img) {
-    const int width = img.getWidth();
-    const int height = img.getHeight();
-    if (width <= 0 || height <= 0) return;
-
-    // Adaptive blur radius scaled to image dimensions (typically 2 to 6 pixels)
-    int radius = std::max(2, std::min(6, std::min(width, height) / 100));
-
-    // Step 1: Compute low-frequency base using separable convolution
-    Image blurred = computeBlurredCopy(img, radius);
-
-    // Step 2: High-pass difference amplification (Unsharp Masking)
-    applyHighPassSharpening(img, blurred, m_alpha);
-
-    // Step 3: Micro-contrast clarity and color vibrance lift
-    applyToneAndVibrance(img, m_contrast, m_vibrance);
-}
-
